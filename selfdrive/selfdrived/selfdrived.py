@@ -54,6 +54,8 @@ class SelfdriveD(CruiseHelper):
   def __init__(self, CP=None, CP_SP=None):
     self.params = Params()
 
+    disable_dm = self.params.get_bool("DisableDM")
+
     # Ensure the current branch is cached, otherwise the first cycle lags
     build_metadata = get_build_metadata()
 
@@ -95,6 +97,9 @@ class SelfdriveD(CruiseHelper):
     if REPLAY:
       # no vipc in replay will make them ignored anyways
       ignore += ['roadCameraState', 'wideRoadCameraState']
+    if disable_dm:
+      ignore += ['driverMonitoringState']
+      self.params.put_bool("IsDriverViewEnabled", True)
     self.sm = messaging.SubMaster(['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'liveCalibration',
                                    'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'livePose', 'liveDelay',
                                    'managerState', 'liveParameters', 'radarState', 'liveTorqueParameters',
