@@ -276,4 +276,8 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"TorqueParamsOverrideLatAccelFactor", {PERSISTENT | BACKUP, FLOAT, "2.5"}},
     // MoneyPilot params
     {"DisableDM", {PERSISTENT | BACKUP, BOOL, "1"}},
+    {"DynamicDamp", {PERSISTENT | BACKUP, BOOL, "1"}},
+    {"DynamicDeltas", {PERSISTENT | BACKUP, BOOL, "1"}},
+    {"DynamicTorque", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"UseImperial", {PERSISTENT | BACKUP, BOOL, "1"}},
 };
