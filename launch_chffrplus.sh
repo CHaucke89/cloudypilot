@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+TOUCH_COUNT="/sys/devices/platform/soc/894000.i2c/i2c-2/2-0017/touch_count"
+FAKE_TOUCH_COUNT="/data/touch_count"
+
 
 source "$DIR/launch_env.sh"
 
@@ -28,6 +31,19 @@ function agnos_init {
 }
 
 function launch {
+
+  # Mount fake touch_count on launch to avoid system reset prompt with soft reboot.
+  # Bind mount does not persist across reboots, so default behavior is preserved with a standard reboot.
+  if ! grep -q "/dev/sda12 $TOUCH_COUNT" /etc/mtab; then
+    echo "touch_count entry not found in mtab"
+    if [ ! -f "$FAKE_TOUCH_COUNT" ]; then
+      echo "Dummy touch_count not found, creating"
+      echo -e "0" > $FAKE_TOUCH_COUNT
+    fi
+    echo "Bind mounting dummy touch_count"
+    sudo mount --bind -o ro $FAKE_TOUCH_COUNT $TOUCH_COUNT
+  fi
+
   # Remove orphaned git lock if it exists on boot
   [ -f "$DIR/.git/index.lock" ] && rm -f $DIR/.git/index.lock
 
