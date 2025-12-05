@@ -108,6 +108,9 @@ class Tici(HardwareBase):
   def reboot(self, reason=None):
     subprocess.check_output(["sudo", "reboot"])
 
+  def soft_reboot(self, reason=None):
+    subprocess.check_output(["sudo", "systemctl", "restart", "comma"])
+
   def uninstall(self):
     Path("/data/__system_reset__").touch()
     os.sync()
