@@ -27,6 +27,7 @@ DESCRIPTIONS = {
   'pair_device': tr_noop("Pair your device with comma connect (connect.comma.ai) and claim your comma prime offer."),
   'driver_camera': tr_noop("Preview the driver facing camera to ensure that driver monitoring has good visibility. (vehicle must be off)"),
   'reset_calibration': tr_noop("sunnypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."),
+  'soft_reboot': tr_noop("Restart openpilot."),
   'review_guide': tr_noop("Review the rules, features, and limitations of sunnypilot"),
 }
 
@@ -55,6 +56,9 @@ class DeviceLayout(Widget):
                                         callback=self._reset_calibration_prompt)
     self._reset_calib_btn.set_description_opened_callback(self._update_calib_description)
 
+    self._soft_reboot_btn = button_item(lambda: tr("Soft Reboot"), lambda: tr("REBOOT"), lambda: tr(DESCRIPTIONS['soft_reboot']),
+                                        callback=self._soft_reboot_prompt)
+
     self._power_off_btn = dual_button_item(lambda: tr("Reboot"), lambda: tr("Power Off"),
                                            left_callback=self._reboot_prompt, right_callback=self._power_off_prompt)
 
@@ -65,6 +69,7 @@ class DeviceLayout(Widget):
       button_item(lambda: tr("Driver Camera"), lambda: tr("PREVIEW"), lambda: tr(DESCRIPTIONS['driver_camera']),
                   callback=self._show_driver_camera, enabled=ui_state.is_offroad),
       self._reset_calib_btn,
+      self._soft_reboot_btn,
       button_item(lambda: tr("Review Training Guide"), lambda: tr("REVIEW"), lambda: tr(DESCRIPTIONS['review_guide']),
                   self._on_review_training_guide, enabled=ui_state.is_offroad),
       regulatory_btn := button_item(lambda: tr("Regulatory"), lambda: tr("VIEW"), callback=self._on_regulatory, enabled=ui_state.is_offroad),
@@ -178,9 +183,21 @@ class DeviceLayout(Widget):
     dialog = ConfirmDialog(tr("Are you sure you want to reboot?"), tr("Reboot"))
     gui_app.set_modal_overlay(dialog, callback=self._perform_reboot)
 
+  def _soft_reboot_prompt(self):
+    if ui_state.engaged:
+      gui_app.set_modal_overlay(alert_dialog(tr("Disengage to Soft Reboot")))
+      return
+
+    dialog = ConfirmDialog(tr("Are you sure you want to soft reboot?"), tr("Soft Reboot"))
+    gui_app.set_modal_overlay(dialog, callback=self._perform_soft_reboot)
+
   def _perform_reboot(self, result: int):
     if not ui_state.engaged and result == DialogResult.CONFIRM:
       self._params.put_bool_nonblocking("DoReboot", True)
+
+  def _perform_soft_reboot(self, result: int):
+    if not ui_state.engaged and result == DialogResult.CONFIRM:
+      self._params.put_bool_nonblocking("DoSoftReboot", True)
 
   def _power_off_prompt(self):
     if ui_state.engaged:

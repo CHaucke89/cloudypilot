@@ -273,6 +273,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
 
     // MoneyPilot params
     {"DisableDM", {PERSISTENT | BACKUP, BOOL, "1"}},
+    {"DoSoftReboot", {CLEAR_ON_MANAGER_START, BOOL}},
     {"DynamicDamp", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"DynamicDeltas", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"DynamicTorque", {PERSISTENT | BACKUP, BOOL, "0"}},
