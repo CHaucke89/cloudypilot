@@ -58,6 +58,8 @@ function launch {
     fi
     echo "Bind mounting dummy touch_count"
     sudo mount --bind -o ro $FAKE_TOUCH_COUNT $TOUCH_COUNT
+  else
+    echo "touch_count entry found in mtab, skipping bind mount"
   fi
 
   # Remove orphaned git lock if it exists on boot
