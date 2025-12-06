@@ -56,9 +56,6 @@ class DeviceLayout(Widget):
                                         callback=self._reset_calibration_prompt)
     self._reset_calib_btn.set_description_opened_callback(self._update_calib_description)
 
-    self._soft_reboot_btn = button_item(lambda: tr("Soft Reboot"), lambda: tr("REBOOT"), lambda: tr(DESCRIPTIONS['soft_reboot']),
-                                        callback=self._soft_reboot_prompt)
-
     self._power_off_btn = dual_button_item(lambda: tr("Reboot"), lambda: tr("Power Off"),
                                            left_callback=self._reboot_prompt, right_callback=self._power_off_prompt)
 
@@ -69,7 +66,6 @@ class DeviceLayout(Widget):
       button_item(lambda: tr("Driver Camera"), lambda: tr("PREVIEW"), lambda: tr(DESCRIPTIONS['driver_camera']),
                   callback=self._show_driver_camera, enabled=ui_state.is_offroad),
       self._reset_calib_btn,
-      self._soft_reboot_btn,
       button_item(lambda: tr("Review Training Guide"), lambda: tr("REVIEW"), lambda: tr(DESCRIPTIONS['review_guide']),
                   self._on_review_training_guide, enabled=ui_state.is_offroad),
       regulatory_btn := button_item(lambda: tr("Regulatory"), lambda: tr("VIEW"), callback=self._on_regulatory, enabled=ui_state.is_offroad),
