@@ -108,7 +108,7 @@ def and_(*fns):
   return lambda *args: operator.and_(*(fn(*args) for fn in fns))
 
 def enable_dm(started: bool, params: Params, CP: car.CarParams) -> bool:
-  return driverview and not params.get_bool("DisableDM")
+  return driverview and not params.get_bool("AlwaysOffDM")
 
 procs = [
   DaemonProcess("manage_athenad", "system.athena.manage_athenad", "AthenadPid"),
