@@ -32,7 +32,7 @@ DESCRIPTIONS = {
     "without a turn signal activated while driving over 31 mph (50 km/h)."
   ),
   "AlwaysOnDM": tr_noop("Enable driver monitoring even when sunnypilot is not engaged."),
-  "DisableDM": tr_noop("Disable driver monitoring even when openpilot is engaged."),
+  "AlwaysOffDM": tr_noop("Disable driver monitoring even when openpilot is engaged."),
   "RecordFront": tr_noop("Upload data from the driver facing camera and help improve the driver monitoring algorithm."),
   "IsMetric": tr_noop("Display speed in km/h instead of mph."),
   "RecordAudio": tr_noop("Record and store microphone audio while driving. The audio will be included in the dashcam video in comma connect."),
@@ -77,9 +77,9 @@ class TogglesLayout(Widget):
         "monitoring.png",
         False,
       ),
-      "DisableDM": (
+      "AlwaysOffDM": (
         lambda: tr("Always-Off Driver Monitoring"),
-        DESCRIPTIONS["DisableDM"],
+        DESCRIPTIONS["AlwaysOffDM"],
         "monitoring.png",
         False,
       ),
@@ -253,9 +253,9 @@ class TogglesLayout(Widget):
       self._params.put_bool("OnroadCycleRequested", True)
 
     if param == "AlwaysOnDM" and state:
-      self._params.put_bool("DisableDM", False)
-      self._toggles["DisableDM"].action_item.set_state(False)
-    elif param == "DisableDM" and state:
+      self._params.put_bool("AlwaysOffDM", False)
+      self._toggles["AlwaysOffDM"].action_item.set_state(False)
+    elif param == "AlwaysOffDM" and state:
       self._params.put_bool("AlwaysOnDM", False)
       self._toggles["AlwaysOnDM"].action_item.set_state(False)
 
