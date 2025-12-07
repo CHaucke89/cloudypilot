@@ -54,7 +54,7 @@ class SelfdriveD(CruiseHelper):
   def __init__(self, CP=None, CP_SP=None):
     self.params = Params()
 
-    disable_dm = self.params.get_bool("DisableDM")
+    disable_dm = self.params.get_bool("AlwaysOffDM")
 
     # Ensure the current branch is cached, otherwise the first cycle lags
     build_metadata = get_build_metadata()
