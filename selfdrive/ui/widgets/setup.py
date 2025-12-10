@@ -11,7 +11,7 @@ from openpilot.system.ui.widgets.button import Button, ButtonStyle
 from openpilot.system.ui.widgets.label import Label
 
 
-class ModelWidget(Widget):
+class ModelWidget(Widget): # todo: break this out to its own script
   def __init__(self):
     super().__init__()
     self._open_models_callback = None
@@ -40,7 +40,7 @@ class ModelWidget(Widget):
       active_name = tr("Default Model")
 
     desc_font = gui_app.font(FontWeight.NORMAL)
-    desc_text = tr("Currently using: {}").format(active_name)
+    desc_text = tr("Current: {}").format(active_name)
     wrapped_desc = wrap_text(desc_font, desc_text, 40, int(w))
 
     for line in wrapped_desc:
