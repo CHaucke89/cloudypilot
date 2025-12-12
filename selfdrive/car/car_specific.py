@@ -6,6 +6,8 @@ from opendbc.car.toyota.values import ToyotaFlags
 
 from openpilot.selfdrive.selfdrived.events import Events
 
+from openpilot.common.params import Params
+
 ButtonType = structs.CarState.ButtonEvent.Type
 GearShifter = structs.CarState.GearShifter
 EventName = log.OnroadEvent.EventName
@@ -94,6 +96,7 @@ class CarSpecificEvents:
 
   def create_common_events(self, CS: structs.CarState, CS_prev: car.CarState):
     events = Events()
+    params = Params()
 
     CI = interfaces[self.CP.carFingerprint]
     # TODO: cleanup the honda-specific logic
@@ -104,7 +107,7 @@ class CarSpecificEvents:
 
     if CS.doorOpen:
       events.add(EventName.doorOpen)
-    if CS.seatbeltUnlatched:
+    if CS.seatbeltUnlatched and not params.get_bool("PermaLatch"):
       events.add(EventName.seatbeltNotLatched)
     if CS.gearShifter != GearShifter.drive and CS.gearShifter not in CI.DRIVABLE_GEARS:
       events.add(EventName.wrongGear)
