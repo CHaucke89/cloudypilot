@@ -33,6 +33,7 @@ DESCRIPTIONS = {
   ),
   "AlwaysOnDM": tr_noop("Enable driver monitoring even when sunnypilot is not engaged."),
   "AlwaysOffDM": tr_noop("Disable driver monitoring even when openpilot is engaged."),
+  "PermaLatch": tr_noop("Disable the Seatbelt Unlaltched event."),
   "RecordFront": tr_noop("Upload data from the driver facing camera and help improve the driver monitoring algorithm."),
   "IsMetric": tr_noop("Display speed in km/h instead of mph."),
   "RecordAudio": tr_noop("Record and store microphone audio while driving. The audio will be included in the dashcam video in comma connect."),
@@ -81,6 +82,12 @@ class TogglesLayout(Widget):
         lambda: tr("Always-Off Driver Monitoring"),
         DESCRIPTIONS["AlwaysOffDM"],
         "monitoring.png",
+        False,
+      ),
+      "PermaLatch": (
+        lambda: tr("Permanent Seatbelt Latch"),
+        DESCRIPTIONS["PermaLatch"],
+        "metric.png",
         False,
       ),
       "RecordFront": (
