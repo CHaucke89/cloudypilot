@@ -24,7 +24,7 @@ class SetupWidget(Widget):
     self._enter_offroad_btn = Button(lambda: tr("Enter"), lambda: ui_state.params.put_bool("OffroadMode", True),
                                      button_style=ButtonStyle.PRIMARY)
     self._exit_offroad_btn = Button(lambda: tr("Exit"), lambda: ui_state.params.put_bool("OffroadMode", False),
-                                     button_style=ButtonStyle.PRIMARY)
+                                     button_style=ButtonStyle.DANGER)
 
   def set_open_settings_callback(self, callback):
     self._open_settings_callback = callback
