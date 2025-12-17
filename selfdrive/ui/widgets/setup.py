@@ -21,6 +21,8 @@ class SetupWidget(Widget):
                                      button_style=ButtonStyle.PRIMARY)
     self._firehose_label = Label(lambda: tr("🔥 Firehose Mode 🔥"), font_weight=FontWeight.MEDIUM, font_size=64)
     self._offroad_label = Label(lambda: tr("Always Offroad Mode"), font_weight=FontWeight.MEDIUM, font_size=64)
+    self._enter_offroad_btn = Button(lambda: tr("Enter"), lambda: ui_state.params.put_bool("OffroadMode", True),
+                                     button_style=ButtonStyle.PRIMARY)
     self._exit_offroad_btn = Button(lambda: tr("Exit"), lambda: ui_state.params.put_bool("OffroadMode", False),
                                      button_style=ButtonStyle.PRIMARY)
 
@@ -116,7 +118,7 @@ class SetupWidget(Widget):
     # Exit
     button_height = 48 + 64  # font size + padding
     button_rect = rl.Rectangle(x, y, w, button_height)
-    self._exit_offroad_btn.render(button_rect)
+    self._exit_offroad_btn.render(button_rect) if ui_state.params.get_bool("OffroadMode") else self._enter_offroad_btn.render(button_rect)
 
   def __del__(self):
     if self._pairing_dialog:
