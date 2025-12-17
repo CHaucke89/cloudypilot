@@ -20,6 +20,8 @@ class SetupWidget(Widget):
                                      button_style=ButtonStyle.PRIMARY)
     self._firehose_label = Label(lambda: tr("🔥 Firehose Mode 🔥"), font_weight=FontWeight.MEDIUM, font_size=64)
     self._offroad_label = Label(lambda: tr("Always Offroad Mode"), font_weight=FontWeight.MEDIUM, font_size=64)
+    self._enter_offroad_btn = Button(lambda: tr("Enter"), lambda: ui_state.params.put_bool("OffroadMode", True),
+                                     button_style=ButtonStyle.PRIMARY)
     self._exit_offroad_btn = Button(lambda: tr("Exit"), lambda: ui_state.params.put_bool("OffroadMode", False),
                                      button_style=ButtonStyle.PRIMARY)
 
