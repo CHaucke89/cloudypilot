@@ -19,6 +19,9 @@ class SetupWidget(Widget):
     self._open_settings_btn = Button(lambda: tr("Open"), lambda: self._open_settings_callback() if self._open_settings_callback else None,
                                      button_style=ButtonStyle.PRIMARY)
     self._firehose_label = Label(lambda: tr("🔥 Firehose Mode 🔥"), font_weight=FontWeight.MEDIUM, font_size=64)
+    self._offroad_label = Label(lambda: tr("Always Offroad Mode"), font_weight=FontWeight.MEDIUM, font_size=64)
+    self._exit_offroad_btn = Button(lambda: tr("Exit"), lambda: ui_state.params.put_bool("OffroadMode", False),
+                                     button_style=ButtonStyle.PRIMARY)
 
   def set_open_settings_callback(self, callback):
     self._open_settings_callback = callback
@@ -27,7 +30,7 @@ class SetupWidget(Widget):
     if not ui_state.prime_state.is_paired():
       self._render_registration(rect)
     else:
-      self._render_firehose_prompt(rect)
+      self._render_offroad_prompt(rect)
 
   def _render_registration(self, rect: rl.Rectangle):
     """Render registration prompt."""
