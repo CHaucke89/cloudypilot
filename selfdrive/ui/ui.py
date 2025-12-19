@@ -40,7 +40,7 @@ def main():
   while not rl.window_should_close():
 
         streamer.stream_frame()
-        rl.end_drawing()
+       # rl.end_drawing()
 
   streamer.close()
 
