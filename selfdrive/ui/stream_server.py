@@ -14,7 +14,6 @@ import subprocess
 import threading
 import base64
 import queue
-from typing import Set
 from collections import deque
 
 from flask import Flask, render_template_string, request, jsonify, Response
@@ -581,7 +580,7 @@ def handle_input():
             sock.connect('/tmp/ui_touch_socket')
             message = json.dumps({
                 **data,
-                'timestamp': time.time()
+                'timestamp': time.monotonic()
             })
             sock.send(message.encode())
             return jsonify({'status': 'success'})

@@ -27,7 +27,7 @@ class TouchInjector:
         if os.path.exists(SOCKET_PATH):
             os.remove(SOCKET_PATH)
 
-        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.server.bind(SOCKET_PATH)
         self.server.setblocking(False)
 
