@@ -30,6 +30,7 @@ class TouchInjector:
         self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.server.bind(SOCKET_PATH)
         self.server.setblocking(False)
+        self.server.listen(1)
 
         self._apply_hooks()
 
