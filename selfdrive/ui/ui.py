@@ -9,10 +9,15 @@ from openpilot.selfdrive.ui.layouts.main import MainLayout
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 from openpilot.selfdrive.ui.ui_state import ui_state
 
+from openpilot.selfdrive.ui.frame_streamer import FrameStreamer
+from openpilot.selfdrive.ui.touch_injector import TouchInjector
 
 def main():
   cores = {5, }
   config_realtime_process(0, 51)
+  streamer = FrameStreamer()
+  injector = TouchInjector()
+  injector.start()
 
   gui_app.init_window("UI")
   if gui_app.big_ui():
@@ -32,6 +37,12 @@ def main():
         except OSError:
           pass
 
+  while not rl.window_should_close():
+
+        streamer.stream_frame()
+        rl.end_drawing()
+
+  streamer.close()
 
 if __name__ == "__main__":
   main()
