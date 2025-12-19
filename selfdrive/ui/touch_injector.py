@@ -46,6 +46,7 @@ class TouchInjector:
                 time.sleep(0.01)
             except Exception as e:
                 print(f"TouchInjector Error: {e}")
+                break
 
     def _process_message(self, data):
         try:
