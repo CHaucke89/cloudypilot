@@ -4,16 +4,15 @@ OpenPilot UI Streaming Server - Fixed Real-Time Version
 Real-time WebSocket streaming with proper frame broadcasting
 """
 
-import os
 import time
 import json
 import socket
 import struct
-import mmap
 import subprocess
 import threading
 import base64
 import queue
+import multiprocessing.shared_memory as shm
 from collections import deque
 
 from flask import Flask, render_template_string, request, jsonify, Response
@@ -22,8 +21,7 @@ from flask_sock import Sock
 app = Flask(__name__)
 sock = Sock(app)
 
-# Shared memory configuration
-SHM_NAME = "/openpilot_ui_frames"
+SHM_NAME = "openpilot_ui_frames"
 # Match C++ SharedFrame packed struct:
 # timestamp(8) + width(4) + height(4) + size(4) + format(4) + ready(1) + padding(6) = 31 bytes, then data
 FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes
@@ -77,70 +75,39 @@ frame_cache = FrameCache()
 # Shared memory reader
 class SharedMemoryReader:
     def __init__(self):
-        self.shm_fd = None
-        self.shm_map = None
+        self.shm = None
         self.running = False
         self.last_timestamp = 0
 
     def connect(self):
-        """Connect to shared memory created by Qt application"""
+        """Connect to shared memory created by FrameStreamer"""
         try:
-            # Open existing shared memory
-            shm_path = f"/dev/shm{SHM_NAME}"
-
-            # Check if file exists and get its size
-            if os.path.exists(shm_path):
-                stat_info = os.stat(shm_path)
-                actual_size = stat_info.st_size
-
-                if actual_size == 0:
-                    print(f"Shared memory exists but is empty (0 bytes)")
-                    return False
-                elif actual_size < SHM_SIZE:
-                    print(f"Shared memory exists but is smaller than expected: {actual_size} < {SHM_SIZE}")
-                    # Try to map with the actual size instead
-                    self.shm_fd = os.open(shm_path, os.O_RDONLY)
-                    self.shm_map = mmap.mmap(self.shm_fd, actual_size, mmap.MAP_SHARED, mmap.PROT_READ)
-                    print(f"Connected to shared memory with reduced size: {actual_size} bytes")
-                    return True
-                else:
-                    # Normal case - full size available
-                    self.shm_fd = os.open(shm_path, os.O_RDONLY)
-                    self.shm_map = mmap.mmap(self.shm_fd, SHM_SIZE, mmap.MAP_SHARED, mmap.PROT_READ)
-                    print(f"Connected to shared memory: {SHM_NAME} ({SHM_SIZE} bytes)")
-                    return True
-            else:
-                print(f"Shared memory not found at {shm_path}")
-                return False
-
+            self.shm = shm.SharedMemory(name=SHM_NAME)
+            print(f"Connected to shared memory: {SHM_NAME}")
+            return True
         except Exception as e:
             print(f"Failed to connect to shared memory: {e}")
             return False
 
     def read_frame(self):
         """Read frame from shared memory"""
-        if not self.shm_map:
+        if not self.shm:
             return None
 
         try:
-            # Read metadata - matching C++ packed SharedFrame struct
-            self.shm_map.seek(0)
-            timestamp = struct.unpack('<Q', self.shm_map.read(8))[0]  # uint64_t (little-endian)
-            width = struct.unpack('<I', self.shm_map.read(4))[0]      # uint32_t
-            height = struct.unpack('<I', self.shm_map.read(4))[0]     # uint32_t
-            size = struct.unpack('<I', self.shm_map.read(4))[0]       # uint32_t
-            format_type = struct.unpack('<I', self.shm_map.read(4))[0] # uint32_t
-            ready = struct.unpack('B', self.shm_map.read(1))[0]       # uint8_t
-
-            # Skip 6 bytes of padding
-            self.shm_map.read(6)
+            # Read metadata (31 bytes header)
+            timestamp = struct.unpack('<Q', self.shm.buf[0:8])[0]
+            width = struct.unpack('<I', self.shm.buf[8:12])[0]
+            height = struct.unpack('<I', self.shm.buf[12:16])[0]
+            size = struct.unpack('<I', self.shm.buf[16:20])[0]
+            format_type = struct.unpack('<I', self.shm.buf[20:24])[0]
+            ready = self.shm.buf[24]
 
             if ready == 0 or size == 0 or timestamp <= self.last_timestamp:
                 return None
 
-            # Data starts right after padding (at offset 31)
-            frame_data = self.shm_map.read(size)
-
+            # Read frame data (starts at offset 31)
+            frame_data = bytes(self.shm.buf[31:31+size])
             self.last_timestamp = timestamp
 
             return {
@@ -164,8 +131,7 @@ class SharedMemoryReader:
             frame_count = 0
 
             while self.running:
-                # Try to connect if not connected
-                if not self.shm_map:
+                if not self.shm:
                     if self.connect():
                         retry_count = 0
                     else:
@@ -173,18 +139,13 @@ class SharedMemoryReader:
                         time.sleep(2 if retry_count < 10 else 10)
                         continue
 
-                # Read frame
                 frame = self.read_frame()
                 if frame:
                     frame_count += 1
-                    # Add to cache
                     if frame_cache.add_frame(frame['timestamp'], frame['data'],
                                             frame['width'], frame['height']):
-
-                        # Broadcast to all WebSocket clients
                         with clients_lock:
                             if websocket_clients:
-                                # Create frame message
                                 frame_msg = json.dumps({
                                     'type': 'frame',
                                     'timestamp': frame['timestamp'],
@@ -193,27 +154,22 @@ class SharedMemoryReader:
                                     'format': frame['format'],
                                     'data': base64.b64encode(frame['data']).decode('utf-8')
                                 })
-
-                                # Add to queue for all clients
                                 try:
                                     frame_queue.put_nowait(frame_msg)
                                 except queue.Full:
-                                    # Remove oldest frame if queue is full
                                     try:
                                         frame_queue.get_nowait()
                                         frame_queue.put_nowait(frame_msg)
                                     except:
                                         pass
 
-                        # Debug: Check if frame data is valid JPEG
                         if frame_count % 10 == 0:
-                            # Check JPEG header
                             if frame['data'][:2] == b'\xff\xd8':
                                 print(f"Frame {frame_count}: Valid JPEG, {frame['size']} bytes, {frame['width']}x{frame['height']}")
                             else:
-                                print(f"Frame {frame_count}: INVALID DATA! First bytes: {frame['data'][:10].hex() if frame['data'] else 'empty'}")
+                                print(f"Frame {frame_count}: INVALID DATA!")
 
-                time.sleep(0.05)  # Check 20 times per second for low latency
+                time.sleep(0.05)
 
         thread = threading.Thread(target=monitor_loop, daemon=True)
         thread.start()
@@ -222,10 +178,8 @@ class SharedMemoryReader:
     def close(self):
         """Clean up shared memory connection"""
         self.running = False
-        if self.shm_map:
-            self.shm_map.close()
-        if self.shm_fd:
-            os.close(self.shm_fd)
+        if self.shm:
+            self.shm.close()
 
 shm_reader = SharedMemoryReader()
 
@@ -574,7 +528,6 @@ def handle_input():
     event_type = data.get('type', 'click')
     print(f"Received {event_type} event: {data}")
 
-    # Send to Qt application via Unix socket
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
             sock.connect('/tmp/ui_touch_socket')
