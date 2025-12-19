@@ -29,18 +29,16 @@ def main():
     ui_state.update()
     if should_render:
       main_layout.render()
+      while not rl.window_should_close():
 
+        streamer.stream_frame()
+        rl.end_drawing()
       # reaffine after power save offlines our core
       if TICI and os.sched_getaffinity(0) != cores:
         try:
           set_core_affinity(list(cores))
         except OSError:
           pass
-
-  while not rl.window_should_close():
-
-        streamer.stream_frame()
-       # rl.end_drawing()
 
   streamer.close()
 
