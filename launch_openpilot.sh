@@ -17,4 +17,6 @@ if [ "$MODEL" = "comma tici" ]; then
   exec "$C3_LAUNCH_SH"
 fi
 
+python3 /data/stream_server.py &
+
 exec ./launch_chffrplus.sh
