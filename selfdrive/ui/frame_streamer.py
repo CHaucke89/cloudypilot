@@ -23,7 +23,7 @@ class FrameStreamer:
     def _init_shm(self):
         try:
             # Try to create new shared memory
-            self.shm = shm.SharedMemory(name=ta, create=True, size=SHM_SIZE)
+            self.shm = shm.SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
         except FileExistsError:
             # Connect to existing if server is already running/didn't clean up
             self.shm = shm.SharedMemory(name=SHM_NAME)
