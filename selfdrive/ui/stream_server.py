@@ -709,7 +709,7 @@ def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
             if result.stdout.strip():
                 print("Network is up.")
                 return True
-        except:
+        except Exception:
             pass
         time.sleep(delay)
     print("Network not detected, continuing anyway...")

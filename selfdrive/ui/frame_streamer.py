@@ -23,7 +23,7 @@ class FrameStreamer:
     def _init_shm(self):
         try:
             # Try to create new shared memory
-            self.shm = shm.SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
+            self.shm = shm.SharedMemory(name=ta, create=True, size=SHM_SIZE)
         except FileExistsError:
             # Connect to existing if server is already running/didn't clean up
             self.shm = shm.SharedMemory(name=SHM_NAME)
@@ -58,8 +58,13 @@ class FrameStreamer:
             if rl_image.data == 0:
                 return
 
-            # Create a buffer view without copying yet
-            c_ubyte_ptr = (ctypes.c_ubyte * data_size).from_address(int(rl_image.data))
+            if hasattr(rl_image.data, '__int__'):
+                data_ptr = int(rl_image.data)
+            else:
+                # Handle cffi void* pointer
+                import ctypes
+                data_ptr = int(ctypes.cast(rl_image.data, ctypes.c_void_p).value)
+            c_ubyte_ptr = (ctypes.c_ubyte * data_size).from_address(data_ptr)
 
             # 3. Create PIL Image and Compress to JPEG
             # 'flipped' because Raylib/GL sometimes captures upside down depending on context,
