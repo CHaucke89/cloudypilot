@@ -20,8 +20,8 @@ class TouchInjector:
 
         self.orig_get_mouse_position = rl.get_mouse_position
         self.orig_is_mouse_button_down = rl.is_mouse_button_down
-        self.orig_is_mouse_button_pressed = rl._handle_mouse_press
-        self.orig_is_mouse_button_released = rl._handle_mouse_release
+        self.orig_is_mouse_button_pressed = rl.is_mouse_button_pressed
+        self.orig_is_mouse_button_released = rl.is_mouse_button_released
 
 
         if os.path.exists(SOCKET_PATH):
@@ -94,4 +94,4 @@ class TouchInjector:
         print("Hooking PyRay input functions for Remote UI...")
         rl.get_mouse_position = self._hook_get_mouse_position
         rl.is_mouse_button_down = self._hook_is_mouse_button_down
-        rl._handle_mouse_press = self._hook_is_mouse_button_pressed
+        rl.is_mouse_button_pressed = self._hook_is_mouse_button_pressed
