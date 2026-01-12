@@ -108,7 +108,7 @@ class SetupWidget(Widget):
 
     # Content margins (56, 40, 56, 40)
     x = rect.x + 56
-    y = rect.y + 40
+    y = rect.y + 30
     w = rect.width - 112
     spacing = 42
 
