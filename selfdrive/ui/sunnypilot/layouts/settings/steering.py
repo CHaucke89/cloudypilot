@@ -36,6 +36,18 @@ class SteeringLayout(Widget):
     self._scroller = Scroller(items, line_separator=False, spacing=0)
 
   def _initialize_items(self):
+    self._camera_offset = option_item_sp(
+      title=lambda: tr("Camera Offset"),
+      param="CameraOffset",
+      description="<<< Positive Values | Negative Values >>>",
+      min_value=-0.35,
+      max_value=0.35,
+      value_change_step=.05,
+      label_callback=(lambda x: f"{x:.2f}"),
+      use_float_scaling=True,
+      inline=True
+    )
+
     self._mads_toggle = toggle_item_sp(
       param="Mads",
       title=lambda: tr("Modular Assistive Driving System (MADS)"),
@@ -83,6 +95,8 @@ class SteeringLayout(Widget):
     )
 
     items = [
+      self._camera_offset,
+      LineSeparatorSP(40),
       self._mads_toggle,
       self._mads_settings_button,
       LineSeparatorSP(40),
