@@ -81,7 +81,7 @@ class ModelRenderer(Widget):
     self._clip_region = None
 
     self._counter = -1
-    self._camera_offset = ui_state.params.get("CameraOffset", return_default=True) if ui_state.active_bundle else 0.0
+    self._camera_offset = ui_state.params.get("CameraOffset", return_default=True)
 
     self._exp_gradient = Gradient(
       start=(0.0, 1.0),  # Bottom of path
