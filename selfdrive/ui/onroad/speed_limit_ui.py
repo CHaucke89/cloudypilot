@@ -27,7 +27,7 @@ class SpeedLimitColors:
   grey: rl.Color = rl.Color(145, 155, 149, 241)
   light_grey: rl.Color = rl.Color(200, 200, 200, 255)
   dark_grey: rl.Color = rl.Color(100, 100, 100, 255)
-  bg_dark: rl.Color = rl.Color(30, 30, 30, 200)
+  bg_dark: rl.Color = rl.Color(20, 20, 20, 230)
   card_bg: rl.Color = rl.Color(50, 50, 50, 200)
 
 
@@ -60,6 +60,7 @@ class SpeedLimitRenderer(Widget):
       return
 
     speed_conv = CV.MS_TO_KPH if ui_state.is_metric else CV.MS_TO_MPH
+
     if sm.valid["mapdOut"]:
       mapd = sm["mapdOut"]
       self.speed_limit = mapd.speedLimit * speed_conv
@@ -88,52 +89,52 @@ class SpeedLimitRenderer(Widget):
 
   def _render(self, rect: rl.Rectangle) -> None:
     self._update_state()
+    panel_width = 420
+    panel_height = 280
+    panel_margin = 20
+    panel_x = rect.x + panel_margin
+    panel_y = rect.y + (rect.height - panel_height) / 2
 
-    panel_width = 320
-    panel_height = 340
-    panel_x = rect.x + 12
-    panel_y = rect.y + rect.height / 2 - panel_height / 2
     panel_rect = rl.Rectangle(panel_x, panel_y, panel_width, panel_height)
-    rl.draw_rectangle_rounded(panel_rect, 0.1, 10, COLORS.bg_dark)
+    rl.draw_rectangle_rounded(panel_rect, 0.08, 10, COLORS.bg_dark)
+    rl.draw_rectangle_rounded_lines_ex(panel_rect, 0.08, 10, 2, rl.Color(80, 80, 80, 200))
 
-    margin = 15
-    sign_width = 110 if ui_state.is_metric else 100
-    sign_height = 120 if ui_state.is_metric else 110
-    sign_x = panel_x + margin
-    sign_y = panel_y + margin
+    padding = 20
+    sign_width = 140 if ui_state.is_metric else 130
+    sign_height = 150 if ui_state.is_metric else 140
+    sign_x = panel_x + padding
+    sign_y = panel_y + padding
 
     self._draw_speed_limit_sign(sign_x, sign_y, sign_width, sign_height)
-    info_x = sign_x + sign_width + 15
-    info_width = panel_width - sign_width - margin * 2 - 15
-    info_y = panel_y + 20
+    info_x = sign_x + sign_width + 20
+    info_width = panel_width - sign_width - padding * 2 - 20
+    info_y = panel_y + padding + 5
 
     # Road name
     self._draw_road_name(info_x, info_y, info_width)
-    info_y += 40
+    info_y += 50
 
     # Road context and lanes
     self._draw_road_details(info_x, info_y, info_width)
-    info_y += 35
+    info_y += 40
 
     # Next speed limit
     self._draw_next_speed_limit(info_x, info_y, info_width)
-
-    info_y = panel_y + sign_height + margin + 25
+    info_y += 40
 
     # Curve speeds
-    self._draw_curve_speeds(panel_x + margin, info_y, panel_width - margin * 2)
-    info_y += 35
+    self._draw_curve_speeds(info_x, info_y, info_width)
 
     # Hazard warning beta
     if self.hazard:
-      self._draw_hazard(panel_x + margin, info_y, panel_width - margin * 2)
-      info_y += 35
+      hazard_y = panel_y + panel_height - 60
+      self._draw_hazard(panel_x + padding, hazard_y, panel_width - padding * 2)
 
     status_text = tr("Map Loaded") if self.tile_loaded else tr("No Map Data")
     status_color = COLORS.green if self.tile_loaded else COLORS.red
-    status_size = measure_text_cached(self._font_medium, status_text, 18)
-    status_pos = rl.Vector2(panel_x + (panel_width - status_size.x) / 2, panel_y + panel_height - 28)
-    rl.draw_text_ex(self._font_medium, status_text, status_pos, 18, 0, status_color)
+    status_size = measure_text_cached(self._font_medium, status_text, 22)
+    status_pos = rl.Vector2(panel_x + (panel_width - status_size.x) / 2, panel_y + panel_height - 30)
+    rl.draw_text_ex(self._font_medium, status_text, status_pos, 22, 0, status_color)
 
   def _draw_speed_limit_sign(self, x: float, y: float, width: float, height: float) -> None:
     speed_str = str(round(self.speed_limit)) if self.speed_limit_valid else "--"
@@ -152,7 +153,7 @@ class SpeedLimitRenderer(Widget):
     ring_width = outer_radius * 0.18
     rl.draw_ring(center, outer_radius - ring_width, outer_radius, 0, 360, 36, COLORS.red)
 
-    font_size = outer_radius * (0.7 if len(speed_str) >= 3 else 0.9)
+    font_size = outer_radius * (0.75 if len(speed_str) >= 3 else 0.95)
     text_size = measure_text_cached(self._font_bold, speed_str, int(font_size))
     text_pos = rl.Vector2(center.x - text_size.x / 2, center.y - text_size.y / 2)
     rl.draw_text_ex(self._font_bold, speed_str, text_pos, font_size, 0, speed_color)
@@ -160,31 +161,34 @@ class SpeedLimitRenderer(Widget):
   def _draw_mutcd_sign(self, x: float, y: float, width: float, height: float, speed_str: str, speed_color: rl.Color) -> None:
     sign_rect = rl.Rectangle(x, y, width, height)
     rl.draw_rectangle_rounded(sign_rect, 0.2, 10, COLORS.white)
-    rl.draw_rectangle_rounded_lines_ex(sign_rect, 0.2, 10, 3, COLORS.black)
+    rl.draw_rectangle_rounded_lines_ex(sign_rect, 0.2, 10, 4, COLORS.black)
 
     speed_label = tr("SPEED")
     limit_label = tr("LIMIT")
-    label_size = 16
+    label_size = 22
 
     speed_text_size = measure_text_cached(self._font_semi_bold, speed_label, label_size)
-    speed_pos = rl.Vector2(x + (width - speed_text_size.x) / 2, y + 8)
+    speed_pos = rl.Vector2(x + (width - speed_text_size.x) / 2, y + 12)
     rl.draw_text_ex(self._font_semi_bold, speed_label, speed_pos, label_size, 0, COLORS.black)
 
     limit_text_size = measure_text_cached(self._font_semi_bold, limit_label, label_size)
-    limit_pos = rl.Vector2(x + (width - limit_text_size.x) / 2, y + 26)
+    limit_pos = rl.Vector2(x + (width - limit_text_size.x) / 2, y + 36)
     rl.draw_text_ex(self._font_semi_bold, limit_label, limit_pos, label_size, 0, COLORS.black)
 
-    font_size = 40 if len(speed_str) >= 3 else 50
+    font_size = 55 if len(speed_str) >= 3 else 70
     num_size = measure_text_cached(self._font_bold, speed_str, font_size)
-    num_pos = rl.Vector2(x + (width - num_size.x) / 2, y + 45)
+    num_pos = rl.Vector2(x + (width - num_size.x) / 2, y + 65)
     rl.draw_text_ex(self._font_bold, speed_str, num_pos, font_size, 0, speed_color)
 
   def _draw_road_name(self, x: float, y: float, width: float) -> None:
     road_display = self.road_name if self.road_name else "--"
-    road_size = measure_text_cached(self._font_semi_bold, road_display, 26)
+    font_size = 32
+    road_size = measure_text_cached(self._font_semi_bold, road_display, font_size)
     if road_size.x > width:
-      road_display = road_display[:15] + "..."
-    rl.draw_text_ex(self._font_semi_bold, road_display, rl.Vector2(x, y), 26, 0, COLORS.white)
+      while len(road_display) > 3 and measure_text_cached(self._font_semi_bold, road_display + "...", font_size).x > width:
+        road_display = road_display[:-1]
+      road_display = road_display + "..."
+    rl.draw_text_ex(self._font_semi_bold, road_display, rl.Vector2(x, y), font_size, 0, COLORS.white)
 
   def _draw_road_details(self, x: float, y: float, width: float) -> None:
     details = []
@@ -193,25 +197,25 @@ class SpeedLimitRenderer(Widget):
     if self.lanes > 0:
       details.append(f"{self.lanes} {tr('lanes')}")
     details_text = " • ".join(details) if details else "--"
-    rl.draw_text_ex(self._font_medium, details_text, rl.Vector2(x, y), 20, 0, COLORS.light_grey)
+    rl.draw_text_ex(self._font_medium, details_text, rl.Vector2(x, y), 26, 0, COLORS.light_grey)
 
   def _draw_next_speed_limit(self, x: float, y: float, width: float) -> None:
     if self.next_speed_limit > 0 and self.next_speed_limit != self.speed_limit:
       next_text = f"{tr('Next')}: {round(self.next_speed_limit)} ({self._format_distance(self.next_speed_limit_distance)})"
     else:
       next_text = f"{tr('Next')}: --"
-    rl.draw_text_ex(self._font_medium, next_text, rl.Vector2(x, y), 20, 0, COLORS.light_grey)
+    rl.draw_text_ex(self._font_medium, next_text, rl.Vector2(x, y), 26, 0, COLORS.light_grey)
 
   def _draw_curve_speeds(self, x: float, y: float, width: float) -> None:
     unit = tr("km/h") if ui_state.is_metric else tr("mph")
     vision_val = str(round(self.vision_curve_speed)) if self.vision_curve_speed > 0 else "--"
     map_val = str(round(self.map_curve_speed)) if self.map_curve_speed > 0 else "--"
     curve_text = f"{tr('Curve')}: V:{vision_val} M:{map_val} {unit}"
-    rl.draw_text_ex(self._font_medium, curve_text, rl.Vector2(x, y), 20, 0, COLORS.light_grey)
+    rl.draw_text_ex(self._font_medium, curve_text, rl.Vector2(x, y), 24, 0, COLORS.light_grey)
 
   def _draw_hazard(self, x: float, y: float, width: float) -> None:
     hazard_text = f"⚠ {self.hazard}"
-    rl.draw_text_ex(self._font_semi_bold, hazard_text, rl.Vector2(x, y), 22, 0, COLORS.red)
+    rl.draw_text_ex(self._font_semi_bold, hazard_text, rl.Vector2(x, y), 28, 0, COLORS.red)
 
   def _format_distance(self, distance: float) -> str:
     if ui_state.is_metric:
