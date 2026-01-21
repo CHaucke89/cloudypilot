@@ -104,7 +104,7 @@ class SetupWidget(Widget):
   def _render_offroad_prompt(self, rect: rl.Rectangle):
     """Render Exit Offroad prompt widget."""
 
-    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 500), 0.04, 20, rl.Color(51, 51, 51, 255))
+    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 400), 0.04, 20, rl.Color(51, 51, 51, 255))
 
     # Content margins (56, 40, 56, 40)
     x = rect.x + 56
