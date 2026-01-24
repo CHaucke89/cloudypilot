@@ -7,6 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 from collections.abc import Callable
 import pyray as rl
 
+from opendbc.sunnypilot.car.tesla.values import TeslaFlagsSP
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.widgets import Widget
@@ -81,7 +82,8 @@ class MadsSettingsLayout(Widget):
   def show_event(self):
     self._scroller.show_event()
 
-  def _mads_limited_settings(self) -> bool:
+  @staticmethod
+  def _mads_limited_settings() -> bool:
     brand = ""
     if ui_state.is_offroad():
       bundle = ui_state.params.get("CarPlatformBundle")
@@ -93,7 +95,7 @@ class MadsSettingsLayout(Widget):
     if brand == "rivian":
       return True
     elif brand == "tesla":
-      return not (ui_state.CP_SP and ui_state.CP_SP.flags & 1)  # 1 == TeslaFlagsSP.HAS_VEHICLE_BUS
+      return not (ui_state.CP_SP and ui_state.CP_SP.flags & TeslaFlagsSP.HAS_VEHICLE_BUS)
     return False
 
   def _update_steering_mode_description(self, button_index: int):

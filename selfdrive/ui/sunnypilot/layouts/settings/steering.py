@@ -4,6 +4,7 @@ Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
 This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
+from cereal import car
 from enum import IntEnum
 
 from openpilot.selfdrive.ui.ui_state import ui_state
@@ -36,23 +37,16 @@ class SteeringLayout(Widget):
     self._scroller = Scroller(items, line_separator=False, spacing=0)
 
   def _initialize_items(self):
-    self._camera_offset = option_item_sp(
-      title=lambda: tr("Camera Offset"),
-      param="CameraOffset",
-      description="<<< Positive Values | Negative Values >>>",
-      min_value=-0.35,
-      max_value=0.35,
-      value_change_step=.05,
-      label_callback=(lambda x: f"{x:.2f}"),
-      use_float_scaling=True,
-      inline=True
-    )
+    self._mads_base_desc = tr("Enable the beloved MADS feature. " +
+                              "Disable toggle to revert back to stock sunnypilot engagement/disengagement.")
+    self._mads_limited_desc = tr("This platform supports limited MADS settings.")
+    self._mads_full_desc = tr("This platform supports all MADS settings.")
+    self._mads_check_compat_desc = tr("Start the vehicle to check vehicle compatibility.")
 
     self._mads_toggle = toggle_item_sp(
       param="Mads",
       title=lambda: tr("Modular Assistive Driving System (MADS)"),
-      description=lambda: tr("Enable the beloved MADS feature. " +
-                             "Disable toggle to revert back to stock sunnypilot engagement/disengagement."),
+      description=self._mads_base_desc,
     )
     self._mads_settings_button = simple_button_item_sp(
       button_text=lambda: tr("Customize MADS"),
@@ -95,8 +89,6 @@ class SteeringLayout(Widget):
     )
 
     items = [
-      self._camera_offset,
-      LineSeparatorSP(40),
       self._mads_toggle,
       self._mads_settings_button,
       LineSeparatorSP(40),
@@ -117,9 +109,30 @@ class SteeringLayout(Widget):
 
   def _update_state(self):
     super()._update_state()
+
+    torque_allowed = True
+    if ui_state.CP is not None:
+      mads_main_desc = self._mads_limited_desc if self._mads_settings_layout._mads_limited_settings() else self._mads_full_desc
+      self._mads_toggle.set_description(f"<b>{mads_main_desc}</b><br><br>{self._mads_base_desc}")
+
+      if ui_state.CP.steerControlType == car.CarParams.SteerControlType.angle:
+        ui_state.params.remove("EnforceTorqueControl")
+        ui_state.params.remove("NeuralNetworkLateralControl")
+        torque_allowed = False
+    else:
+      self._mads_toggle.set_description(f"<b>{self._mads_check_compat_desc}</b><br><br>{self._mads_base_desc}")
+      ui_state.params.remove("EnforceTorqueControl")
+      ui_state.params.remove("NeuralNetworkLateralControl")
+      torque_allowed = False
+
     self._mads_toggle.action_item.set_enabled(ui_state.is_offroad())
     self._mads_settings_button.action_item.set_enabled(ui_state.is_offroad() and self._mads_toggle.action_item.get_state())
     self._blinker_control_options.set_visible(self._blinker_control_toggle.action_item.get_state())
+
+    enforce_torque_enabled = self._torque_control_toggle.action_item.get_state()
+    nnlc_enabled = self._nnlc_toggle.action_item.get_state()
+    self._nnlc_toggle.action_item.set_enabled(ui_state.is_offroad() and torque_allowed and not enforce_torque_enabled)
+    self._torque_control_toggle.action_item.set_enabled(ui_state.is_offroad() and torque_allowed and not nnlc_enabled)
     self._torque_customization_button.action_item.set_enabled(self._torque_control_toggle.action_item.get_state())
 
   def _render(self, rect):
