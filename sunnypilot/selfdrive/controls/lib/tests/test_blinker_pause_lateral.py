@@ -49,7 +49,7 @@ class TestBlinkerPauseLateral:
     self._test_should_blinker_pause_lateral(expected_results)
 
   def test_reengage_delay(self):
-    self.blinker_pause_lateral.reengage_delay = 1 # seconds
+    self.blinker_pause_lateral.reengage_delay = 2
     self.CS.vEgo = 4.5
 
     expected_results = {
