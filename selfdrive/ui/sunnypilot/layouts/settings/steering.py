@@ -91,6 +91,16 @@ class SteeringLayout(Widget):
       button_width=850,
       callback=lambda: self._set_current_panel(PanelType.TORQUE_CONTROL)
     )
+    self._dynamic_torque_toggle = toggle_item_sp(
+      param="DynamicTorque",
+      title=lambda: tr("Dynamic Torque"),
+      description=lambda: tr("Automatically adjust maximum steering torque based on vehicle speed."),
+    )
+    self._dynamic_deltas_toggle = toggle_item_sp(
+      param="DynamicDeltas",
+      title=lambda: tr("Dynamic Deltas"),
+      description=lambda: tr("Automatically adjust the steer deltas based on vehicle speed."),
+    )
     self._nnlc_toggle = toggle_item_sp(
       param="NeuralNetworkLateralControl",
       title=lambda: tr("Neural Network Lateral Control (NNLC)"),
@@ -109,6 +119,8 @@ class SteeringLayout(Widget):
       LineSeparatorSP(40),
       self._torque_control_toggle,
       self._torque_customization_button,
+      self._dynamic_torque_toggle,
+      self._dynamic_deltas_toggle,
       LineSeparatorSP(40),
       self._nnlc_toggle,
     ]
@@ -140,6 +152,8 @@ class SteeringLayout(Widget):
     self._blinker_control_options.set_visible(self._blinker_control_toggle.action_item.get_state())
     self._blinker_reengage_delay.set_visible(self._blinker_control_toggle.action_item.get_state())
     self._torque_customization_button.set_visible(self._torque_control_toggle.action_item.get_state())
+    self._dynamic_torque_toggle.set_visible(self._torque_control_toggle.action_item.get_state())
+    self._dynamic_deltas_toggle.set_visible(self._torque_control_toggle.action_item.get_state())
 
     enforce_torque_enabled = self._torque_control_toggle.action_item.get_state()
     nnlc_enabled = self._nnlc_toggle.action_item.get_state()
