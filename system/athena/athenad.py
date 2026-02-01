@@ -43,6 +43,7 @@ from openpilot.system.hardware.hw import Paths
 
 
 ATHENA_HOST = os.getenv('ATHENA_HOST', 'wss://athena.comma.ai')
+ATHENA_HOST_KONIK = os.getenv('ATHENA_HOST_KONIK', 'wss://athena.konik.ai')
 HANDLER_THREADS = int(os.getenv('HANDLER_THREADS', "4"))
 LOCAL_PORT_WHITELIST = {22, }  # SSH
 
@@ -909,9 +910,10 @@ def main(exit_event: threading.Event | None = None):
 
   params = Params()
   dongle_id = params.get("DongleId")
+  konik = params.get_bool("UseKonik")
   UploadQueueCache.initialize(upload_queue)
 
-  ws_uri = ATHENA_HOST + "/ws/v2/" + dongle_id
+  ws_uri = (ATHENA_HOST if not konik else ATHENA_HOST_KONIK) + "/ws/v2/" + dongle_id
   api = Api(dongle_id)
 
   conn_start = None

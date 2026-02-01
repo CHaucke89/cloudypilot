@@ -1,11 +1,15 @@
 import os
 
 from openpilot.common.api.base import BaseApi
+from openpilot.common.params import Params
+
 
 API_HOST = os.getenv('API_HOST', 'https://api.commadotai.com')
-
+API_HOST_KONIK = os.getenv('API_HOST_KONIK', 'https://api.konik.ai')
 
 class CommaConnectApi(BaseApi):
   def __init__(self, dongle_id):
-    super().__init__(dongle_id, API_HOST)
+    params = Params()
+    konik = params.get_bool("UseKonik")
+    super().__init__(dongle_id, (API_HOST if not konik else API_HOST_KONIK))
     self.user_agent = "openpilot-"
