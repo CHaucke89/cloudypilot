@@ -331,19 +331,22 @@ class BearingDegElement(GpsInfoElement):
 class AltitudeElement(GpsInfoElement):
   def __init__(self):
     self.unit = "m"
+    self.unit_ft = "ft"
 
-  def update(self, sm, is_metric: bool) -> UiElement:
+  def update(self, sm, is_metric: bool, use_imperial: bool) -> UiElement:
     gps_data, valid = self.get_gps_data(sm)
 
     gps_accuracy = 0.0
     altitude = 0.0
+    altitude_ft = 0.0
 
     if valid:
       altitude = gps_data.altitude
+      altitude_ft = altitude * 3.28084
       if sm.valid['gpsLocationExternal']:
         gps_accuracy = gps_data.horizontalAccuracy
       else:
         gps_accuracy = 1.0  # Simulate valid for legacy check
 
-    value = f"{altitude:.1f}" if gps_accuracy != 0.0 else "-"
-    return UiElement(value, "ALT.", self.unit, rl.WHITE)
+    value = f"{(altitude if not use_imperial else altitude_ft):.1f}" if gps_accuracy != 0.0 else "-"
+    return UiElement(value, "ALT.", (self.unit if not use_imperial else self.unit_ft), rl.WHITE)
