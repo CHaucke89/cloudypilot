@@ -147,6 +147,7 @@ class UIStateSP:
     self.turn_signals = self.params.get_bool("ShowTurnSignals")
     self.boot_offroad_mode = self.params.get("DeviceBootMode", return_default=True)
 
+    self.use_imperial = self.params.get_bool("UseImperial")
 
 class DeviceSP:
   @staticmethod
