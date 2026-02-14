@@ -152,7 +152,7 @@ class DeveloperUiRenderer(Widget):
 
     # Add altitude if GPS available
     if sm.valid['gpsLocationExternal'] or sm.valid['gpsLocation']:
-      elements.append(self.altitude_elem.update(sm, ui_state.is_metric))
+      elements.append(self.altitude_elem.update(sm, ui_state.is_metric, ui_state.use_imperial))
 
     if not elements:
       return
