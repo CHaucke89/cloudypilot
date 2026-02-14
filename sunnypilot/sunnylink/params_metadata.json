@@ -11,6 +11,10 @@
     "title": "Alpha Longitudinal",
     "description": ""
   },
+  "AlwaysOffDM": {
+    "title": "Always-off Driver Monitor",
+    "description": ""
+  },  
   "AlwaysOnDM": {
     "title": "Always-on Driver Monitor",
     "description": ""
@@ -274,8 +278,20 @@
     "title": "Driver Too Distracted",
     "description": ""
   },
+  "DynamicDamp": {
+    "title": "Dynamic Damp Factor",
+    "description": ""
+  },
+  "DynamicDeltas": {
+    "title": "Dynamic Steer Deltas",
+    "description": ""
+  },
   "DynamicExperimentalControl": {
     "title": "Dynamic Experimental Control",
+    "description": ""
+  },
+  "DynamicTorque": {
+    "title": "Dynamic Torque",
     "description": ""
   },
   "EnableCopyparty": {
