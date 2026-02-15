@@ -33,9 +33,12 @@ def register(show_spinner=False) -> str | None:
   entirely.
   """
   params = Params()
+  konik = params.get_bool("KonikApi")
+  konik_dongle_id = params.get("KonikDongleId")
+  comma_dongle_id = params.get("CommaDongleId")
 
-  dongle_id: str | None = params.get("DongleId")
-  if dongle_id is None and Path(Paths.persist_root()+"/comma/dongle_id").is_file():
+  dongle_id: str | None = konik_dongle_id if konik else comma_dongle_id
+  if (dongle_id is None and not konik) and Path(Paths.persist_root()+"/comma/dongle_id").is_file():
     # not all devices will have this; added early in comma 3X production (2/28/24)
     with open(Paths.persist_root()+"/comma/dongle_id") as f:
       dongle_id = f.read().strip()
@@ -98,6 +101,7 @@ def register(show_spinner=False) -> str | None:
 
   if dongle_id:
     params.put("DongleId", dongle_id)
+    params.put("KonikDongleId" if konik else "CommaDongleId", dongle_id)
     set_offroad_alert("Offroad_UnregisteredHardware", (dongle_id == UNREGISTERED_DONGLE_ID) and not PC)
   return dongle_id
 
