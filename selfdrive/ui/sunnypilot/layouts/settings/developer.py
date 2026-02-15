@@ -50,9 +50,13 @@ class DeveloperLayoutSP(DeveloperLayout):
 
     self.prebuilt_toggle = toggle_item_sp(tr("Quickboot Mode"), "", param="QuickBootToggle", callback=self._on_prebuilt_toggled)
 
+    self.konik_toggle = toggle_item_sp(tr("Use Konik API"), tr("Use Konik's API rather than comma's. Requires reboot."), param="KonikApi",
+                                       callback=self._on_konik_toggled)
+
     self.error_log_btn = button_item(tr("Error Log"), tr("VIEW"), tr("View the error log for sunnypilot crashes."), callback=self._on_error_log_clicked)
 
-    self.items: list = [self.show_advanced_controls, self.enable_github_runner_toggle, self.enable_copyparty_toggle, self.prebuilt_toggle, self.error_log_btn,]
+    self.items: list = [self.show_advanced_controls, self.enable_github_runner_toggle, self.enable_copyparty_toggle, self.prebuilt_toggle, self.konik_toggle, \
+                        self.error_log_btn,]
 
   @staticmethod
   def _on_prebuilt_toggled(state):
@@ -84,6 +88,14 @@ class DeveloperLayoutSP(DeveloperLayout):
     dialog = HtmlModalSP(text=text, callback=lambda result: self._on_error_log_closed(result, os.path.exists(self.error_log_path)))
     gui_app.set_modal_overlay(dialog)
 
+  def _perform_reboot(self, result):
+    if result == DialogResult.CONFIRM:
+      ui_state.params.put_bool("DoSoftReboot", True)
+
+  def _on_konik_toggled(self, result):
+    dialog = ConfirmDialog(tr("Soft reboot required for changes to take effect. Soft reboot now?"), tr("Soft Reboot"))
+    gui_app.set_modal_overlay(dialog, callback=self._perform_reboot)
+
   def _update_state(self):
     disable_updates = ui_state.params.get_bool("DisableUpdates")
     show_advanced = ui_state.params.get_bool("ShowAdvancedControls")
@@ -103,4 +115,5 @@ class DeveloperLayoutSP(DeveloperLayout):
 
     self.enable_copyparty_toggle.set_visible(show_advanced)
     self.enable_github_runner_toggle.set_visible(show_advanced and not self._is_release_branch)
+    self.konik_toggle.set_visible(show_advanced)
     self.error_log_btn.set_visible(not self._is_release_branch)
