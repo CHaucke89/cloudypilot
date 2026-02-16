@@ -189,7 +189,7 @@ class DeviceLayout(Widget):
 
   def _perform_reboot(self, result: int):
     if not ui_state.engaged and result == DialogResult.CONFIRM:
-      self._params.put_bool_nonblocking("DoReboot", True)
+      self._params.put_bool_nonblocking("DoSoftReboot", True)
 
   def _perform_soft_reboot(self, result: int):
     if not ui_state.engaged and result == DialogResult.CONFIRM:

@@ -42,7 +42,7 @@ class SoftwareLayoutSP(SoftwareLayout):
   def _handle_reboot(self, result):
     if result == DialogResult.CONFIRM:
       ui_state.params.put_bool("DisableUpdates", self.disable_updates_toggle.action_item.get_state())
-      ui_state.params.put_bool("DoReboot", True)
+      ui_state.params.put_bool("DoSoftReboot", True)
     else:
       self.disable_updates_toggle.action_item.set_state(ui_state.params.get_bool("DisableUpdates"))
 
