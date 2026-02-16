@@ -200,7 +200,7 @@ class UpdateOpenpilotBigButton(BigButton):
       if self.get_value() == "download update":
         os.system("pkill -SIGHUP -f system.updated.updated")
       elif self.get_value() == "update now":
-        ui_state.params.put_bool("DoReboot", True)
+        ui_state.params.put_bool("DoSoftReboot", True)
       else:
         os.system("pkill -SIGUSR1 -f system.updated.updated")
 
@@ -295,7 +295,7 @@ class DeviceLayoutMici(NavScroller):
       ui_state.params.put_bool("DoShutdown", True)
 
     def reboot_callback():
-      ui_state.params.put_bool("DoReboot", True)
+      ui_state.params.put_bool("DoSoftReboot", True)
 
     def reset_calibration_callback():
       params = ui_state.params
