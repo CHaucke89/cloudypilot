@@ -8,6 +8,7 @@ import json
 import math
 import os
 from collections.abc import Callable
+from cereal import custom
 import pyray as rl
 
 from openpilot.common.basedir import BASEDIR
@@ -118,8 +119,8 @@ class TorqueSettingsLayout(Widget):
     self._torque_lat_accel_factor.set_visible(custom_tune_enabled)
     self._torque_friction.set_visible(custom_tune_enabled)
 
-    self._torque_prams_override_toggle.action_item.set_enabled(ui_state.is_offroad())
-    sliders_enabled = self._torque_prams_override_toggle.action_item.get_state() or ui_state.is_offroad()
+    self._torque_prams_override_toggle.action_item.set_enabled(custom_tune_enabled)
+    sliders_enabled = self._torque_prams_override_toggle.action_item.get_state() or custom_tune_enabled
     self._torque_lat_accel_factor.action_item.set_enabled(sliders_enabled)
     self._torque_friction.action_item.set_enabled(sliders_enabled)
 
