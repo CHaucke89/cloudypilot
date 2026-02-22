@@ -102,7 +102,7 @@ class TorqueSettingsLayout(Widget):
       min_value=1,
       max_value=100,
       value_change_step=1,
-      label_callback=(lambda x: f"{x/100} m/s^2"),
+      label_callback=(lambda x: f"{x/100}"),
       use_float_scaling=True
     )
 
