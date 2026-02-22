@@ -95,6 +95,28 @@ class TorqueSettingsLayout(Widget):
       use_float_scaling=True
     )
 
+    self._custom_kp = option_item_sp(
+      title=lambda: tr("Kp"),
+      param="CustomKp",
+      description="",
+      min_value=1,
+      max_value=100,
+      value_change_step=1,
+      label_callback=(lambda x: f"{x/100} m/s^2"),
+      use_float_scaling=True
+    )
+
+    self._custom_ki = option_item_sp(
+      title=lambda: tr("Ki"),
+      param="CustomKi",
+      description="",
+      min_value=1,
+      max_value=100,
+      value_change_step=1,
+      label_callback=(lambda x: f"{x/100}"),
+      use_float_scaling=True
+    )
+
     items = [
       self._torque_control_versions,
       self._self_tune_toggle,
@@ -103,6 +125,8 @@ class TorqueSettingsLayout(Widget):
       self._torque_prams_override_toggle,
       self._torque_lat_accel_factor,
       self._torque_friction,
+      self._custom_kp,
+      self._custom_ki,
     ]
     return items
 
@@ -123,6 +147,8 @@ class TorqueSettingsLayout(Widget):
     sliders_enabled = self._torque_prams_override_toggle.action_item.get_state() or custom_tune_enabled
     self._torque_lat_accel_factor.action_item.set_enabled(sliders_enabled)
     self._torque_friction.action_item.set_enabled(sliders_enabled)
+    self._custom_kp.action_item.set_enabled(sliders_enabled)
+    self._custom_ki.action_item.set_enabled(sliders_enabled)
 
     title_text = tr("Real-Time & Offline") if ui_state.params.get("TorqueParamsOverrideEnabled") else tr("Offline Only")
     self._torque_lat_accel_factor.set_title(lambda: tr("Lateral Acceleration Factor") + " (" + title_text + ")")
