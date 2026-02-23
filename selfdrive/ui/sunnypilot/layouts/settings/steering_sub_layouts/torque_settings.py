@@ -58,17 +58,17 @@ class TorqueSettingsLayout(Widget):
       description=lambda: tr("Less strict settings when using Self-Tune. This allows torqued to be more " +
                              "forgiving when learning values."),
     )
-    self._custom_tune_toggle = toggle_item_sp(
+    self._custom_offline_values_toggle = toggle_item_sp(
       param="CustomTorqueParams",
-      title=lambda: tr("Enable Custom Tuning"),
+      title=lambda: tr("Custom Offline Values"),
       description=lambda: tr("Enables custom tuning for Torque lateral control. " +
                              "Modifying Lateral Acceleration Factor and Friction below will override the offline values " +
                              "indicated in the YAML files within \"opendbc/car/torque_data\". " +
                              "The values will also be used live when \"Manual Real-Time Tuning\" toggle is enabled."),
     )
-    self._torque_prams_override_toggle = toggle_item_sp(
+    self._custom_live_values_toggle = toggle_item_sp(
       param="TorqueParamsOverrideEnabled",
-      title=lambda: tr("Manual Real-Time Tuning"),
+      title=lambda: tr("Custom Live Values"),
       description=lambda: tr("Enforces the torque lateral controller to use the fixed values instead of the learned " +
                              "values from Self-Tune. Enabling this toggle overrides Self-Tune values."),
     )
@@ -98,8 +98,8 @@ class TorqueSettingsLayout(Widget):
       self._torque_control_versions,
       self._self_tune_toggle,
       self._relaxed_tune_toggle,
-      self._custom_tune_toggle,
-      self._torque_prams_override_toggle,
+      self._custom_offline_values_toggle,
+      self._custom_live_values_toggle,
       self._torque_lat_accel_factor,
       self._torque_friction,
     ]
@@ -112,18 +112,24 @@ class TorqueSettingsLayout(Widget):
       self._relaxed_tune_toggle.action_item.set_state(False)
     self._self_tune_toggle.action_item.set_enabled(ui_state.is_offroad())
     self._relaxed_tune_toggle.action_item.set_enabled(ui_state.is_offroad() and self._self_tune_toggle.action_item.get_state())
-    self._custom_tune_toggle.action_item.set_enabled(ui_state.is_offroad())
-    custom_tune_enabled = self._custom_tune_toggle.action_item.get_state()
-    self._torque_prams_override_toggle.set_visible(custom_tune_enabled)
-    self._torque_lat_accel_factor.set_visible(custom_tune_enabled)
-    self._torque_friction.set_visible(custom_tune_enabled)
+    self._custom_offline_values_toggle.action_item.set_enabled(ui_state.is_offroad())
+    offline_tune_enabled = self._custom_offline_values_toggle.action_item.get_state()
+    live_tune_enabled = self._custom_live_values_toggle.action_item.get_state()
+    self._custom_live_values_toggle.set_visible(self._self_tune_toggle.action_item.get_state())
+    self._torque_lat_accel_factor.set_visible(offline_tune_enabled or live_tune_enabled)
+    self._torque_friction.set_visible(offline_tune_enabled or live_tune_enabled)
 
-    self._torque_prams_override_toggle.action_item.set_enabled(custom_tune_enabled)
-    sliders_enabled = self._torque_prams_override_toggle.action_item.get_state() or custom_tune_enabled
+    self._custom_live_values_toggle.action_item.set_enabled(self._self_tune_toggle.action_item.get_state())
+    sliders_enabled = live_tune_enabled or offline_tune_enabled
     self._torque_lat_accel_factor.action_item.set_enabled(sliders_enabled)
     self._torque_friction.action_item.set_enabled(sliders_enabled)
 
-    title_text = tr("Real-Time & Offline") if ui_state.params.get("TorqueParamsOverrideEnabled") else tr("Offline Only")
+    if live_tune_enabled and offline_tune_enabled:
+      title_text = tr("Live & Offline")
+    elif live_tune_enabled and not offline_tune_enabled:
+      title_text = tr("Live only")
+    else:
+      title_text = tr("Offline only")
     self._torque_lat_accel_factor.set_title(lambda: tr("Lateral Acceleration Factor") + " (" + title_text + ")")
     self._torque_friction.set_title(lambda: tr("Friction") + " (" + title_text + ")")
     self._torque_control_versions.action_item.set_value(self._get_current_torque_version_label())
