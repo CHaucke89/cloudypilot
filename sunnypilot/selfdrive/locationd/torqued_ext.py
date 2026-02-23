@@ -27,8 +27,8 @@ class TorqueEstimatorExt:
 
     self.enforce_torque_control_toggle = self._params.get_bool("EnforceTorqueControl")  # only during init
     self.use_params = self.CP.brand in ALLOWED_CARS and self.CP.lateralTuning.which() == 'torque'
-    self.use_live_torque_params = self._params.get_bool("LiveTorqueParamsToggle")
-    self.torque_override_enabled = self._params.get_bool("TorqueParamsOverrideEnabled")
+    self.self_tune_enabled = self._params.get_bool("LiveTorqueParamsToggle")
+    self.custom_live_params = self._params.get_bool("TorqueParamsOverrideEnabled")
     self.min_bucket_points = RELAXED_MIN_BUCKET_POINTS
     self.factor_sanity = 0.0
     self.friction_sanity = 0.0
@@ -50,16 +50,16 @@ class TorqueEstimatorExt:
 
   def _update_params(self):
     if self.frame % int(PARAMS_UPDATE_PERIOD / DT_MDL) == 0:
-      self.use_live_torque_params = self._params.get_bool("LiveTorqueParamsToggle")
-      self.torque_override_enabled = self._params.get_bool("TorqueParamsOverrideEnabled")
+      self.self_tune_enabled = self._params.get_bool("LiveTorqueParamsToggle")
+      self.custom_live_params = self._params.get_bool("TorqueParamsOverrideEnabled")
 
   def update_use_params(self):
     self._update_params()
 
     if self.enforce_torque_control_toggle:
-      if self.torque_override_enabled:
+      if self.custom_live_params:
         self.use_params = False
       else:
-        self.use_params = self.use_live_torque_params
+        self.use_params = self.self_tune_enabled
 
     self.frame += 1
