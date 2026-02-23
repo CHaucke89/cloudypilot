@@ -3,26 +3,28 @@
 This is a personal fork of [sunnypilot](https://github.com/sunnypilot/sunnypilot) specifically made for my Kia EV6 that very much falls under the [Bad/Unsafe Forks category](https://github.com/commaai/openpilot/wiki/Forks#badunsafe-forks). If you do not want to be banned from comma connect, do NOT use this with uploads enabled and be sure to delete all rlogs before switching back to a safe fork and re-enabling uploads. If you do not use comma connect or use an alternative like konik.ai, then you have nothing to worry about...except your life while letting this fork operate a motor vehicle with you in it.
 
 Just kidding, it's not that bad.
-Some of the features/changes (in no particular order):
+Some of the additional features and/or changes in no particular order:
 
-### Toggleable:
-- Always-Off Driver Monitoring (mutually exclusive with Always-On Driver Monitoring) - added for testing purposes only. Please do not drive with driver monitoring disabled. 
+### Toggles:
+- Always-Off Driver Monitoring (mutually exclusive with Always-On Driver Monitoring) - used for testing purposes only. **Please do not drive with driver monitoring disabled.**
 - Dynamic "damp factor" when using stock longitudinal control
 - Dynamic maximum steering torque & steer deltas
 - Use Imperial units (feet) in the on-road developer UI rather than SI units (meters)
+- Modified torque tune logic - Offline and Live tuning can be enabled or disabled independent of one another
+  - Live tuning can be enabled or disabled and values can be modified while onroad
+  - Live tuning can be enabled or disabled regardless of automatic self tune being enabled
 
 ### Other Stuff:
-- Increased maximum steering torque with dynamic torque toggled off
-- Steer delta values increased with dynamic deltas toggled off
+- Increased default maximum steering torque
+- Increased default steer delta values
 - Current active model widget on home screen with a button to open the Models settings page
 - Current branch widget on home screen with a button to open the Software settings page
 - Enter/Exit Always Offroad Mode widget on home screen
 - Various UI changes, mainly colors
 - Git LFS removed/not used (all files are present in the repo)
-- Any branch may be broken at any time - this is a free time hobby and only meant for myself, but as an avid supporter of open source software, it doesn't feel right to make this repo private. 
+- Any branch may be broken at any time - this is a free time hobby and only meant for myself, but as an avid supporter of open source software, it doesn't feel right to make this repo private.
 
-Use at your own risk!
-
+If you decide to install this, you do so at your own risk!
 
 
 # Licensing
