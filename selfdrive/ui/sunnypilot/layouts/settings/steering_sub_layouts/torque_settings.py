@@ -122,7 +122,6 @@ class TorqueSettingsLayout(Widget):
     self._torque_lat_accel_factor.set_visible(offline_tune_enabled or live_tune_enabled)
     self._torque_friction.set_visible(offline_tune_enabled or live_tune_enabled)
 
-    self._custom_live_values_toggle.action_item.set_enabled(True)
     sliders_enabled = live_tune_enabled or (self_tune_enabled and offline_tune_enabled)
     self._torque_lat_accel_factor.action_item.set_enabled(sliders_enabled)
     self._torque_friction.action_item.set_enabled(sliders_enabled)
