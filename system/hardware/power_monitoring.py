@@ -124,11 +124,14 @@ class PowerMonitoring:
     if offroad_timestamp is None:
       return False
 
+    low_voltage_custom = (self.car_voltage_mV < (self.params.get("CustomShutdownVoltage") * 1e3))
+    low_voltage_default = (self.car_voltage_mV < (VBATT_PAUSE_CHARGING * 1e3))
     now = time.monotonic()
     should_shutdown = False
     offroad_time = (now - offroad_timestamp)
-    low_voltage_shutdown = (self.car_voltage_mV < (VBATT_PAUSE_CHARGING * 1e3) and
-                            offroad_time > VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S)
+    low_voltage_shutdown = low_voltage_default if (low_voltage_custom == low_voltage_default) else \
+                           low_voltage_custom and \
+                           offroad_time > VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S
     should_shutdown |= self.max_time_offroad_exceeded(offroad_time)
     should_shutdown |= low_voltage_shutdown
     should_shutdown |= (self.car_battery_capacity_uWh <= 0)

@@ -67,6 +67,23 @@ class DeviceLayoutSP(DeviceLayout):
       label_callback=self._update_max_time_offroad_label
     )
 
+    self._low_voltage_shutdown = option_item_sp(
+      title=lambda: tr("Low Voltage Shutdown"),
+      description=lambda: tr("Device will shutdown if car battery reaches set voltage."),
+      param="CustomShutdownVoltage",
+      min_value=1180,
+      max_value=1280,
+      value_change_step=10,
+      on_value_changed=None,
+      enabled=True,
+      icon="",
+      value_map=None,
+      label_width=360,
+      use_float_scaling=True,
+      inline=True,
+      label_callback=(lambda volt: f"{volt/100}V")
+    )
+
     self._device_wake_mode = multiple_button_item_sp(
       title=lambda: tr("Wake Up Behavior"),
       description=self.wake_mode_description,
@@ -130,6 +147,8 @@ class DeviceLayoutSP(DeviceLayout):
       self._device_wake_mode,
       LineSeparator(),
       self._max_time_offroad,
+      LineSeparator(height=10),
+      self._low_voltage_shutdown,
       LineSeparator(height=10),
       self._quiet_mode_and_dcam,
       self._reg_and_training,
