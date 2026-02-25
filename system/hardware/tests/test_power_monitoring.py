@@ -135,6 +135,26 @@ class TestPowerMonitoring:
                             (ssb - start_time) > DELAY_SHUTDOWN_TIME_S)
     assert pm.should_shutdown(ignition, True, start_time, True)
 
+  def test_car_voltage_custom(self, mocker):
+    POWER_DRAW = 0 # To stop shutting down for other reasons
+    TEST_TIME = 350
+    VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S = 50
+    pm_patch(mocker, "VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S", VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S, constant=True)
+    pm_patch(mocker, "HARDWARE.get_current_power_draw", POWER_DRAW)
+    pm = PowerMonitoring()
+    pm.car_battery_capacity_uWh = CAR_BATTERY_CAPACITY_uWh
+    low_voltage_custom = self.params.get("CustomShutdownVoltage")
+    ignition = False
+    start_time = ssb
+    for i in range(TEST_TIME):
+      pm.calculate(VOLTAGE_BELOW_PAUSE_CHARGING, ignition)
+      if i % 10 == 0:
+        assert pm.should_shutdown(ignition, True, start_time, True) == \
+                          (pm.car_voltage_mV < low_voltage_custom * 1e3 and \
+                          (ssb - start_time) > VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S and \
+                            (ssb - start_time) > DELAY_SHUTDOWN_TIME_S)
+    assert pm.should_shutdown(ignition, True, start_time, True)
+
   # Test to check policy of not stopping charging when DisablePowerDown is set
   def test_disable_power_down(self, mocker):
     POWER_DRAW = 0 # To stop shutting down for other reasons
