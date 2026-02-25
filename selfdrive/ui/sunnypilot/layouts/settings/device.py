@@ -81,7 +81,7 @@ class DeviceLayoutSP(DeviceLayout):
       label_width=360,
       use_float_scaling=True,
       inline=True,
-      label_callback=(lambda volt: f"{volt/100}V")
+      label_callback=self._update_low_voltage_shutdown_label
     )
 
     self._device_wake_mode = multiple_button_item_sp(
@@ -213,6 +213,11 @@ class DeviceLayoutSP(DeviceLayout):
   def _update_max_time_offroad_label(value: int) -> str:
     label = tr("Always On") if value == 0 else f"{value}" + tr("m") if value < 60 else f"{value // 60}" + tr("h")
     label += tr(" (Default)") if value == 1800 else ""
+    return label
+
+  @staticmethod
+  def _update_low_voltage_shutdown_label(value: int) -> str:
+    label = tr("Default") if value == 11.8 else f"{value // 100}" + tr("V")
     return label
 
   def _update_state(self):
