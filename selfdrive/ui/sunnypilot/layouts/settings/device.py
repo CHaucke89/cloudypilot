@@ -68,6 +68,23 @@ class DeviceLayoutSP(DeviceLayout):
       label_callback=self._update_max_time_offroad_label
     )
 
+    self._low_voltage_shutdown = option_item_sp(
+      title=lambda: tr("Low Voltage Shutdown"),
+      description=lambda: tr("Device will shutdown if car battery reaches set voltage."),
+      param="CustomShutdownVoltage",
+      min_value=1170,
+      max_value=1280,
+      value_change_step=10,
+      on_value_changed=None,
+      enabled=True,
+      icon="",
+      value_map=None,
+      label_width=360,
+      use_float_scaling=True,
+      inline=True,
+      label_callback=self._update_low_voltage_shutdown_label
+    )
+
     self._device_wake_mode = multiple_button_item_sp(
       title=lambda: tr("Wake Up Behavior"),
       description=self.wake_mode_description,
@@ -132,39 +149,7 @@ class DeviceLayoutSP(DeviceLayout):
       LineSeparator(),
       self._max_time_offroad,
       LineSeparator(height=10),
-      self._quiet_mode_and_dcam,
-      self._reg_and_training,
-      self._onroad_uploads_and_reset_settings,
-      Spacer(10),
-      LineSeparator(),
-      self._soft_reboot_btn,
-      LineSeparator(height=10),
-      self._power_buttons,
-    ]
-
-    self._power_buttons = dual_button_item_sp(
-      left_text=lambda: tr("Reboot"),
-      right_text=lambda: tr("Power Off"),
-      left_callback=self._reboot_prompt,
-      right_callback=self._power_off_prompt
-    )
-    self._reboot_btn = self._power_buttons.action_item.left_button
-    self._power_btn = self._power_buttons.action_item.right_button
-
-    items = [
-      text_item(lambda: tr("Dongle ID"), self._params.get("DongleId") or (lambda: tr("N/A"))),
-      LineSeparator(),
-      text_item(lambda: tr("Serial"), self._params.get("HardwareSerial") or (lambda: tr("N/A"))),
-      LineSeparator(),
-      self._pair_device_btn,
-      LineSeparator(),
-      self._reset_calib_btn,
-      LineSeparator(),
-      button_item_sp(lambda: tr("Change Language"), lambda: tr("CHANGE"), callback=self._show_language_dialog),
-      LineSeparator(),
-      self._device_wake_mode,
-      LineSeparator(),
-      self._max_time_offroad,
+      self._low_voltage_shutdown,
       LineSeparator(height=10),
       self._quiet_mode_and_dcam,
       self._reg_and_training,
@@ -229,6 +214,12 @@ class DeviceLayoutSP(DeviceLayout):
   def _update_max_time_offroad_label(value: int) -> str:
     label = tr("Always On") if value == 0 else f"{value}" + tr("m") if value < 60 else f"{value // 60}" + tr("h")
     label += tr(" (Default)") if value == 1800 else ""
+    return label
+
+  @staticmethod
+  def _update_low_voltage_shutdown_label(value: int) -> str:
+    label = tr("Always On") if value == 1170 else f"{value / 100}" + tr("V")
+    label += tr(" (Default)") if value == 1180 else ""
     return label
 
   def _update_state(self):
