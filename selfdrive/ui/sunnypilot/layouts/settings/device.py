@@ -160,40 +160,6 @@ class DeviceLayoutSP(DeviceLayout):
       self._power_buttons,
     ]
 
-    self._power_buttons = dual_button_item_sp(
-      left_text=lambda: tr("Reboot"),
-      right_text=lambda: tr("Power Off"),
-      left_callback=self._reboot_prompt,
-      right_callback=self._power_off_prompt
-    )
-    self._reboot_btn = self._power_buttons.action_item.left_button
-    self._power_btn = self._power_buttons.action_item.right_button
-
-    items = [
-      text_item(lambda: tr("Dongle ID"), self._params.get("DongleId") or (lambda: tr("N/A"))),
-      LineSeparator(),
-      text_item(lambda: tr("Serial"), self._params.get("HardwareSerial") or (lambda: tr("N/A"))),
-      LineSeparator(),
-      self._pair_device_btn,
-      LineSeparator(),
-      self._reset_calib_btn,
-      LineSeparator(),
-      button_item_sp(lambda: tr("Change Language"), lambda: tr("CHANGE"), callback=self._show_language_dialog),
-      LineSeparator(),
-      self._device_wake_mode,
-      LineSeparator(),
-      self._max_time_offroad,
-      LineSeparator(height=10),
-      self._quiet_mode_and_dcam,
-      self._reg_and_training,
-      self._onroad_uploads_and_reset_settings,
-      Spacer(10),
-      LineSeparator(),
-      self._soft_reboot_btn,
-      LineSeparator(height=10),
-      self._power_buttons,
-    ]
-
     return items
 
   def _offroad_transition(self):
