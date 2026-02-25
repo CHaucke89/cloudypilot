@@ -216,7 +216,7 @@ class DeviceLayoutSP(DeviceLayout):
     return label
 
   @staticmethod
-  def _update_low_voltage_shutdown_label(value: float) -> str:
+  def _update_low_voltage_shutdown_label(value: int) -> str:
     label = tr("Default") if value == 11800 else f"{value / 100}" + tr("V")
     return label
 
