@@ -125,7 +125,10 @@ class PowerMonitoring:
       low_voltage_custom = param * 1e3 if param is not None and param > 11.8 else VBATT_PAUSE_CHARGING * 1e3
     except Exception:
       low_voltage_custom = VBATT_PAUSE_CHARGING * 1e3
-
+    print(f"Low Voltage Custom: {low_voltage_custom}")
+    print(f"param: {param}")
+    print(f"vbatt: {VBATT_PAUSE_CHARGING}")
+    print(f"car v: {car_voltage}")
     return 1280 >= low_voltage_custom >= car_voltage
 
   # See if we need to shutdown
