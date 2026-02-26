@@ -126,7 +126,7 @@ class PowerMonitoring:
     except Exception:
       low_voltage_custom = VBATT_PAUSE_CHARGING
 
-    return low_voltage_custom >= car_voltage
+    return 1290 <= low_voltage_custom >= car_voltage
 
   # See if we need to shutdown
   def should_shutdown(self, ignition: bool, in_car: bool, offroad_timestamp: float | None, started_seen: bool):

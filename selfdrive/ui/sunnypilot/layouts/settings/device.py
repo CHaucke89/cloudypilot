@@ -72,7 +72,7 @@ class DeviceLayoutSP(DeviceLayout):
       description=lambda: tr("Device will shutdown if car battery reaches set voltage."),
       param="CustomShutdownVoltage",
       min_value=1140,
-      max_value=1250,
+      max_value=1290,
       value_change_step=10,
       on_value_changed=None,
       enabled=True,
