@@ -71,8 +71,8 @@ class DeviceLayoutSP(DeviceLayout):
       title=lambda: tr("Low Voltage Shutdown"),
       description=lambda: tr("Device will shutdown if car battery reaches set voltage."),
       param="CustomShutdownVoltage",
-      min_value=1180,
-      max_value=1280,
+      min_value=1140,
+      max_value=1250,
       value_change_step=10,
       on_value_changed=None,
       enabled=True,
@@ -217,7 +217,7 @@ class DeviceLayoutSP(DeviceLayout):
 
   @staticmethod
   def _update_low_voltage_shutdown_label(value: int) -> str:
-    label = f"{value / 100}" + tr("V")
+    label = tr("Always On") if value == 1290 else f"{value / 100}" + tr("V")
     label += tr(" (Default)") if value == 1180 else ""
     return label
 

@@ -119,18 +119,24 @@ class PowerMonitoring:
 
     return 0 < sp_max_time_val_s <= offroad_time
 
+  def low_voltage_exceeded(self, car_voltage):
+    try:
+      param = self.params.get("CustomShutdownVoltage")
+      low_voltage_custom = param * 1e3 if param is not None and param > 11.8 else VBATT_PAUSE_CHARGING
+    except Exception:
+      low_voltage_custom = VBATT_PAUSE_CHARGING
+
+    return low_voltage_custom >= car_voltage
+
   # See if we need to shutdown
   def should_shutdown(self, ignition: bool, in_car: bool, offroad_timestamp: float | None, started_seen: bool):
     if offroad_timestamp is None:
       return False
 
-    low_voltage_custom = (self.params.get("CustomShutdownVoltage") * 1e3)
-    low_voltage_default = (VBATT_PAUSE_CHARGING * 1e3)
     now = time.monotonic()
     should_shutdown = False
     offroad_time = (now - offroad_timestamp)
-    low_voltage_shutdown = (self.car_voltage_mV < low_voltage_default) if (low_voltage_custom == low_voltage_default) else \
-                           (self.car_voltage_mV < low_voltage_custom) and \
+    low_voltage_shutdown = self.low_voltage_exceeded(self.car_voltage_mV) and \
                            offroad_time > VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S
     should_shutdown |= self.max_time_offroad_exceeded(offroad_time)
     should_shutdown |= low_voltage_shutdown
