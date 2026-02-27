@@ -129,7 +129,7 @@ class PowerMonitoring:
     print(f"param: {param}")
     print(f"VBATT_PAUSE_CHARGING: {VBATT_PAUSE_CHARGING}")
     print(f"car_voltage: {car_voltage}")
-    return 1280 >= low_voltage_custom >= car_voltage
+    return car_voltage <= low_voltage_custom and param >= 11.8
 
   # See if we need to shutdown
   def should_shutdown(self, ignition: bool, in_car: bool, offroad_timestamp: float | None, started_seen: bool):
