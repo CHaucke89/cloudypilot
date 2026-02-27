@@ -244,7 +244,7 @@ class TestPowerMonitoring:
       (VBATT_PAUSE_CHARGING, VBATT_PAUSE_CHARGING - 0.1, True),
       (VBATT_PAUSE_CHARGING, VBATT_PAUSE_CHARGING + 0.1, False),
 
-      # Custom voltage < VBATT_PAUSE_CHARGING (disables shutdown)
+      # Custom voltage < VBATT_PAUSE_CHARGING (disables shutdown due to low voltage)
       (VBATT_PAUSE_CHARGING - 1.0, VBATT_PAUSE_CHARGING - 2.0, False),
       (VBATT_PAUSE_CHARGING - 1.0, VBATT_PAUSE_CHARGING + 1.0, False),
     ]
