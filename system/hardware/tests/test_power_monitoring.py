@@ -232,3 +232,42 @@ class TestPowerMonitoring:
     result = pm.max_time_offroad_exceeded(offroad_time_s)
 
     assert result == expected_result
+
+  @pytest.mark.parametrize(
+    "custom_voltage_param, car_voltage_mV, expected_result",
+    [
+      # Custom voltage set below 11.8V is ignored
+      (11.7, 11.6 * 1e3, False),
+      (11.7, 11.8 * 1e3, False),
+      (0, 10.0 * 1e3, False),
+      (-1, 10.0 * 1e3, False),
+
+      # Custom voltage at 11.8V uses VBATT_PAUSE_CHARGING
+      (11.8, (VBATT_PAUSE_CHARGING - 0.1) * 1e3, True),
+      (11.8, VBATT_PAUSE_CHARGING * 1e3, True),
+      (11.8, (VBATT_PAUSE_CHARGING + 0.1) * 1e3, False),
+
+      # Custom voltage above 11.8V uses the custom value
+      (12.0, 11.9 * 1e3, True),
+      (12.0, 12.0 * 1e3, True),
+      (12.0, 12.1 * 1e3, False),
+    ]
+  )
+  def test_battery_voltage_below_threshold(self, mocker, custom_voltage_param, car_voltage_mV, expected_result):
+    pm = PowerMonitoring()
+    mocker.patch.object(pm.params, 'get', return_value=custom_voltage_param)
+    assert pm.battery_voltage_below_threshold(car_voltage_mV) == expected_result
+
+  @pytest.mark.parametrize("param_return, expected_exception", [
+    (None, TypeError),
+    (Exception, NameError),
+  ])
+  def test_battery_voltage_below_threshold_exceptions(self, mocker, param_return, expected_exception):
+    pm = PowerMonitoring()
+    if param_return is Exception:
+      mocker.patch.object(pm.params, 'get', side_effect=Exception("mock exception"))
+    else:
+      mocker.patch.object(pm.params, 'get', return_value=param_return)
+
+    with pytest.raises(expected_exception):
+      pm.battery_voltage_below_threshold(11.0 * 1e3)
