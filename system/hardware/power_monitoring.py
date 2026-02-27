@@ -121,7 +121,7 @@ class PowerMonitoring:
 
   def battery_voltage_below_threshold(self, car_voltage):
     try:
-      param = self.params.get("CustomShutdownVoltage")
+      param = self.params.get("CustomShutdownVoltage", return_default=True)
       low_voltage_custom = param * 1e3 if param is not None and param > 11.8 else VBATT_PAUSE_CHARGING * 1e3
     except Exception:
       low_voltage_custom = VBATT_PAUSE_CHARGING * 1e3
