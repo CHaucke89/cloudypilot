@@ -218,7 +218,7 @@ class DeviceLayoutSP(DeviceLayout):
 
   @staticmethod
   def _update_low_voltage_shutdown_label(value: int) -> str:
-    label = tr("Always On") if value == 1170 else f"{value / 100}" + tr("V")
+    label = tr("Disabled") if value == 1170 else f"{value / 100}" + tr("V")
     label += tr(" (Default)") if value == 1180 else ""
     return label
 
