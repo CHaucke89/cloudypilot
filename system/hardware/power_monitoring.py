@@ -125,10 +125,7 @@ class PowerMonitoring:
       low_voltage_custom = param * 1e3 if param is not None and param > 11.8 else VBATT_PAUSE_CHARGING * 1e3
     except Exception:
       low_voltage_custom = VBATT_PAUSE_CHARGING * 1e3
-    print(f"low_voltage_custom: {low_voltage_custom}")
-    print(f"param: {param}")
-    print(f"VBATT_PAUSE_CHARGING: {VBATT_PAUSE_CHARGING}")
-    print(f"car_voltage: {car_voltage}")
+
     return car_voltage <= low_voltage_custom and param >= 11.8
 
   # See if we need to shutdown
@@ -139,9 +136,8 @@ class PowerMonitoring:
     now = time.monotonic()
     should_shutdown = False
     offroad_time = (now - offroad_timestamp)
-    low_voltage_shutdown = self.battery_voltage_below_threshold(self.car_voltage_mV)# and \
-                          # offroad_time > VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S
-    print(f"low_voltage_shutdown: {low_voltage_shutdown}")
+    low_voltage_shutdown = self.battery_voltage_below_threshold(self.car_voltage_mV) and \
+                           offroad_time > VOLTAGE_SHUTDOWN_MIN_OFFROAD_TIME_S
     should_shutdown |= self.max_time_offroad_exceeded(offroad_time)
     should_shutdown |= low_voltage_shutdown
     should_shutdown |= (self.car_battery_capacity_uWh <= 0)
