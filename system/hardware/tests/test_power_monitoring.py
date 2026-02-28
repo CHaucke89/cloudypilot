@@ -237,16 +237,16 @@ class TestPowerMonitoring:
     "custom_voltage, car_voltage, expected_result",
     [
       # Valid custom voltage > VBATT_PAUSE_CHARGING
-      (VBATT_PAUSE_CHARGING + 0.2, VBATT_PAUSE_CHARGING + 0.1, True),
-      (VBATT_PAUSE_CHARGING + 0.2, VBATT_PAUSE_CHARGING + 0.3, False),
+      (12.0, 11.9, True),
+      (12.0, 12.1, False),
 
       # Custom voltage == VBATT_PAUSE_CHARGING
-      (VBATT_PAUSE_CHARGING, VBATT_PAUSE_CHARGING - 0.1, True),
-      (VBATT_PAUSE_CHARGING, VBATT_PAUSE_CHARGING + 0.1, False),
+      (11.8, 11.7, True),
+      (11.8, 11.9, False),
 
       # Custom voltage < VBATT_PAUSE_CHARGING (disables shutdown due to low voltage)
-      (VBATT_PAUSE_CHARGING - 1.0, VBATT_PAUSE_CHARGING - 2.0, False),
-      (VBATT_PAUSE_CHARGING - 1.0, VBATT_PAUSE_CHARGING + 1.0, False),
+      (11.7, 11.6, False),
+      (11.7, 11.9, False),
     ]
   )
   def test_battery_voltage_below_threshold(self, custom_voltage, car_voltage, expected_result):

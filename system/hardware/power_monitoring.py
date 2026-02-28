@@ -124,7 +124,7 @@ class PowerMonitoring:
     try:
       # Only use low_voltage_custom if it's greater than VBATT_PAUSE_CHARGING
       param = self.params.get("CustomShutdownVoltage", return_default=True)
-      low_voltage_custom = param * 1e3 if param is not None and param > 11.8 else VBATT_PAUSE_CHARGING * 1e3
+      low_voltage_custom = param * 1e3 if param is not None and param > VBATT_PAUSE_CHARGING else VBATT_PAUSE_CHARGING * 1e3
     except Exception:
       low_voltage_custom = VBATT_PAUSE_CHARGING * 1e3
 
