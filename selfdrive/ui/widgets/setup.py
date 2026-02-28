@@ -98,3 +98,26 @@ class SetupWidget(Widget):
       return
 
     gui_app.push_widget(PairingDialog())
+
+  def _render_offroad_prompt(self, rect: rl.Rectangle):
+    """Render Exit Offroad prompt widget."""
+
+    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 500), 0.04, 20, rl.Color(51, 51, 51, 255))
+
+    # Content margins (56, 40, 56, 40)
+    x = rect.x + 56
+    y = rect.y + 40
+    w = rect.width - 112
+    spacing = 42
+
+    self._offroad_label.render(rl.Rectangle(rect.x, y, rect.width, 64))
+    y += 64 + spacing
+
+    # Exit
+    button_height = 48 + 64  # font size + padding
+    button_rect = rl.Rectangle(x, y, w, button_height)
+    self._exit_offroad_btn.render(button_rect)
+
+  def __del__(self):
+    if self._pairing_dialog:
+      del self._pairing_dialog

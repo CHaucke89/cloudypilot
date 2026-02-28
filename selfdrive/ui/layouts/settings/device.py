@@ -167,21 +167,24 @@ class DeviceLayout(Widget):
       gui_app.push_widget(alert_dialog(tr("Disengage to Reboot")))
       return
 
-    def _soft_reboot_prompt(self):
-    if ui_state.engaged:
-      gui_app.set_modal_overlay(alert_dialog(tr("Disengage to Soft Reboot")))
-      return
-
-    dialog = ConfirmDialog(tr("Are you sure you want to soft reboot?"), tr("Soft Reboot"))
-    gui_app.set_modal_overlay(dialog, callback=self._perform_soft_reboot)
-
-  def perform_reboot(result: DialogResult):
+    def perform_reboot(result: DialogResult):
       if not ui_state.engaged and result == DialogResult.CONFIRM:
         self._params.put_bool_nonblocking("DoReboot", True)
 
-  def _perform_soft_reboot(self, result: int):
-    if not ui_state.engaged and result == DialogResult.CONFIRM:
-      self._params.put_bool_nonblocking("DoSoftReboot", True)
+    dialog = ConfirmDialog(tr("Are you sure you want to reboot?"), tr("Reboot"), callback=perform_reboot)
+    gui_app.push_widget(dialog)
+
+  def _soft_reboot_prompt(self):
+    if ui_state.engaged:
+      gui_app.push_widget(alert_dialog(tr("Disengage to Soft Reboot")))
+      return
+
+    def perform_soft_reboot(result: DialogResult):
+      if not ui_state.engaged and result == DialogResult.CONFIRM:
+        self._params.put_bool_nonblocking("DoSoftReboot", True)
+
+    dialog = ConfirmDialog(tr("Are you sure you want to soft reboot?"), tr("Soft Reboot"), callback=perform_soft_reboot)
+    gui_app.push_widget(dialog)
 
   def _power_off_prompt(self):
     if ui_state.engaged:
