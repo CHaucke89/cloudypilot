@@ -278,6 +278,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"TorqueParamsOverrideEnabled", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"TorqueParamsOverrideFriction", {PERSISTENT | BACKUP, FLOAT, "0.1"}},
     {"TorqueParamsOverrideLatAccelFactor", {PERSISTENT | BACKUP, FLOAT, "2.5"}},
+
     // MoneyPilot params
     {"AlwaysOffDM", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"DoSoftReboot", {CLEAR_ON_MANAGER_START, BOOL}},
@@ -285,5 +286,6 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"DynamicDeltas", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"DynamicTorque", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"PermaLatch", {PERSISTENT | BACKUP, BOOL, "1"}},
+    {"TorqueTuneType", {PERSISTENT | BACKUP, INT, "0"}},
     {"UseImperial", {PERSISTENT | BACKUP, BOOL, "1"}},
 };
