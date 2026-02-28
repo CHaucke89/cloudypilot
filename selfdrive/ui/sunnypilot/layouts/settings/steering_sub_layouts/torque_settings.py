@@ -13,7 +13,7 @@ import pyray as rl
 from openpilot.common.basedir import BASEDIR
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app, FontWeight
-from openpilot.system.ui.lib.multilang import tr
+from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.sunnypilot.lib.utils import NoElideButtonAction
 from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp, option_item_sp, multiple_button_item_sp
 from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog, TreeFolder, TreeNode
@@ -120,17 +120,15 @@ class TorqueSettingsLayout(Widget):
     super()._update_state()
     self._tuning_type.action_item.set_selected_button(ui_state.params.get("TorqueTuneType", return_default=True))
     self_tune_enabled = self._self_tune_toggle.action_item.get_state()
-    offline_tune_enabled = self_tune_enabled and self._tuning_type.action_item.
-    live_tune_enabled = self._custom_live_values_toggle.action_item.get_state()
+    offline_tune_enabled = self_tune_enabled and self._tuning_type.action_item.get_selected_button() == 1
+    live_tune_enabled = self._tuning_type.action_item.get_selected_button() == 2
     if not self_tune_enabled:
       ui_state.params.remove("LiveTorqueParamsRelaxedToggle")
       self._relaxed_tune_toggle.action_item.set_state(False)
       self._custom_offline_values_toggle.action_item.set_state(False)
     self._self_tune_toggle.action_item.set_enabled(ui_state.is_offroad())
     self._relaxed_tune_toggle.action_item.set_enabled(ui_state.is_offroad() and self._self_tune_toggle.action_item.get_state())
-    self._custom_offline_values_toggle.action_item.set_enabled(ui_state.is_offroad())
-    self._custom_live_values_toggle.set_visible(True)
-    self._custom_offline_values_toggle.set_visible(self_tune_enabled)
+    self._tuning_type.action_item.set_enabled(ui_state.is_offroad())
     self._torque_lat_accel_factor.set_visible(offline_tune_enabled or live_tune_enabled)
     self._torque_friction.set_visible(offline_tune_enabled or live_tune_enabled)
 
@@ -138,14 +136,8 @@ class TorqueSettingsLayout(Widget):
     self._torque_lat_accel_factor.action_item.set_enabled(sliders_enabled)
     self._torque_friction.action_item.set_enabled(sliders_enabled)
 
-    if live_tune_enabled and offline_tune_enabled:
-      title_text = tr("Live & Offline")
-    elif live_tune_enabled and not offline_tune_enabled:
-      title_text = tr("Live only")
-    else:
-      title_text = tr("Offline only")
-    self._torque_lat_accel_factor.set_title(lambda: tr("Lateral Acceleration Factor") + " (" + title_text + ")")
-    self._torque_friction.set_title(lambda: tr("Friction") + " (" + title_text + ")")
+    self._torque_lat_accel_factor.set_title(lambda: tr("Lateral Acceleration Factor"))
+    self._torque_friction.set_title(lambda: tr("Friction"))
     self._torque_control_versions.action_item.set_value(self._get_current_torque_version_label())
 
   def _render(self, rect):
