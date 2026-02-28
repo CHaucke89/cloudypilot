@@ -120,12 +120,10 @@ class TorqueSettingsLayout(Widget):
     super()._update_state()
     self._tuning_type.action_item.set_selected_button(ui_state.params.get("TorqueTuneType", return_default=True))
     self_tune_enabled = self._self_tune_toggle.action_item.get_state()
-   # offline_tune_enabled = self_tune_enabled and self._tuning_type.action_item.get_selected_button() == 1
-    #live_tune_enabled = self._tuning_type.action_item.get_selected_button() == 2
+
     if not self_tune_enabled:
       ui_state.params.remove("LiveTorqueParamsRelaxedToggle")
       self._relaxed_tune_toggle.action_item.set_state(False)
-      self._custom_offline_values_toggle.action_item.set_state(False)
     self._self_tune_toggle.action_item.set_enabled(ui_state.is_offroad())
     self._relaxed_tune_toggle.action_item.set_enabled(ui_state.is_offroad() and self._self_tune_toggle.action_item.get_state())
     self._tuning_type.action_item.set_enabled(ui_state.is_offroad())
