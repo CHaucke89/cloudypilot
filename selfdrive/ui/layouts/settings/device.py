@@ -167,7 +167,7 @@ class DeviceLayout(Widget):
       gui_app.push_widget(alert_dialog(tr("Disengage to Reboot")))
       return
 
-    def _soft_reboot_prompt(self):
+  def _soft_reboot_prompt(self):
     if ui_state.engaged:
       gui_app.set_modal_overlay(alert_dialog(tr("Disengage to Soft Reboot")))
       return
