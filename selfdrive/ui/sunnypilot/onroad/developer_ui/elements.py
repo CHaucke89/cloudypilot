@@ -7,6 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 import pyray as rl
 from dataclasses import dataclass
 
+from openpilot.common.params import Params
 from openpilot.common.constants import CV
 
 
@@ -246,11 +247,15 @@ class LeadSpeedElement(LeadInfoElement):
 class FrictionCoefficientElement:
   def __init__(self):
     self.unit = ""
+    self.params = Params()
 
   def update(self, sm, is_metric: bool) -> UiElement:
     ltp = sm['liveTorqueParameters']
     friction_coef = ltp.frictionCoefficientFiltered
     live_valid = ltp.liveValid
+
+    if self.params.get_bool("TorqueParamsOverrideEnabled"):
+      friction_coef = float(self.params.get("TorqueParamsOverrideFriction", return_default=True))
 
     value = f"{friction_coef:.3f}"
     color = rl.Color(0, 255, 0, 255) if live_valid else rl.WHITE
@@ -260,11 +265,15 @@ class FrictionCoefficientElement:
 class LatAccelFactorElement:
   def __init__(self):
     self.unit = ""
+    self.params = Params()
 
   def update(self, sm, is_metric: bool) -> UiElement:
     ltp = sm['liveTorqueParameters']
     lat_accel_factor = ltp.latAccelFactorFiltered
     live_valid = ltp.liveValid
+
+    if self.params.get_bool("TorqueParamsOverrideEnabled"):
+      lat_accel_factor = float(self.params.get("TorqueParamsOverrideLatAccelFactor", return_default=True))
 
     value = f"{lat_accel_factor:.3f}"
     color = rl.Color(0, 255, 0, 255) if live_valid else rl.WHITE
