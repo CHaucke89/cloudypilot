@@ -17,11 +17,11 @@
     "**/.git",
     "**/.venv",
     "**/__pycache__",
-    // exclude directories that should be using the symlinked version
     "common/**",
     "selfdrive/**",
     "system/**",
     "third_party/**",
-    "tools/**",
-  ]
+    "tools/**"
+  ],
+  "C_Cpp_Runner.msvcBatchPath": ""
 }
