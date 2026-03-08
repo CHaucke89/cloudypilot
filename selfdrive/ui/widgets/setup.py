@@ -19,6 +19,11 @@ class SetupWidget(Widget):
     self._open_settings_btn = Button(lambda: tr("Open"), lambda: self._open_settings_callback() if self._open_settings_callback else None,
                                      button_style=ButtonStyle.PRIMARY)
     self._firehose_label = Label(lambda: tr("🔥 Firehose Mode 🔥"), font_weight=FontWeight.MEDIUM, font_size=64)
+    self._offroad_label = Label(lambda: tr("Always Offroad Mode"), font_weight=FontWeight.MEDIUM, font_size=64)
+    self._enter_offroad_btn = Button(lambda: tr("Enter"), lambda: ui_state.params.put_bool("OffroadMode", True),
+                                     button_style=ButtonStyle.PRIMARY)
+    self._exit_offroad_btn = Button(lambda: tr("Exit"), lambda: ui_state.params.put_bool("OffroadMode", False),
+                                     button_style=ButtonStyle.DANGER)
 
   def set_open_settings_callback(self, callback):
     self._open_settings_callback = callback
@@ -27,7 +32,7 @@ class SetupWidget(Widget):
     if not ui_state.prime_state.is_paired():
       self._render_registration(rect)
     else:
-      self._render_firehose_prompt(rect)
+      self._render_offroad_prompt(rect)
 
   def _render_registration(self, rect: rl.Rectangle):
     """Render registration prompt."""
@@ -93,3 +98,26 @@ class SetupWidget(Widget):
       return
 
     gui_app.push_widget(PairingDialog())
+
+  def _render_offroad_prompt(self, rect: rl.Rectangle):
+    """Render Exit Offroad prompt widget."""
+
+    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 350), 0.04, 20, rl.Color(51, 51, 51, 255))
+
+    # Content margins (56, 40, 56, 40)
+    x = rect.x + 56
+    y = rect.y + 40
+    w = rect.width - 112
+    spacing = 42
+
+    self._offroad_label.render(rl.Rectangle(rect.x, y, rect.width, 64))
+    y += 64 + spacing
+
+    # Exit
+    button_height = 48 + 64  # font size + padding
+    button_rect = rl.Rectangle(x, y, w, button_height)
+    self._exit_offroad_btn.render(button_rect)
+
+  def __del__(self):
+    if self._pairing_dialog:
+      del self._pairing_dialog

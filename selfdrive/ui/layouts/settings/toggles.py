@@ -32,7 +32,9 @@ DESCRIPTIONS = {
     "without a turn signal activated while driving over 31 mph (50 km/h)."
   ),
   "AlwaysOnDM": tr_noop("Enable driver monitoring even when sunnypilot is not engaged."),
-  'RecordFront': tr_noop("Upload data from the driver facing camera and help improve the driver monitoring algorithm."),
+  "AlwaysOffDM": tr_noop("Disable driver monitoring even when openpilot is engaged."),
+  "PermaLatch": tr_noop("Disable the Seatbelt Unlaltched event."),
+  "RecordFront": tr_noop("Upload data from the driver facing camera and help improve the driver monitoring algorithm."),
   "IsMetric": tr_noop("Display speed in km/h instead of mph."),
   "RecordAudio": tr_noop("Record and store microphone audio while driving. The audio will be included in the dashcam video in comma connect."),
 }
@@ -74,6 +76,18 @@ class TogglesLayout(Widget):
         lambda: tr("Always-On Driver Monitoring"),
         DESCRIPTIONS["AlwaysOnDM"],
         "monitoring.png",
+        False,
+      ),
+      "AlwaysOffDM": (
+        lambda: tr("Always-Off Driver Monitoring"),
+        DESCRIPTIONS["AlwaysOffDM"],
+        "monitoring.png",
+        False,
+      ),
+      "PermaLatch": (
+        lambda: tr("Permanent Seatbelt Latch"),
+        DESCRIPTIONS["PermaLatch"],
+        "metric.png",
         False,
       ),
       "RecordFront": (
@@ -243,6 +257,13 @@ class TogglesLayout(Widget):
     self._params.put_bool(param, state)
     if self._toggle_defs[param][3]:
       self._params.put_bool("OnroadCycleRequested", True)
+
+    if param == "AlwaysOnDM" and state:
+      self._params.put_bool("AlwaysOffDM", False)
+      self._toggles["AlwaysOffDM"].action_item.set_state(False)
+    elif param == "AlwaysOffDM" and state:
+      self._params.put_bool("AlwaysOnDM", False)
+      self._toggles["AlwaysOnDM"].action_item.set_state(False)
 
   def _set_longitudinal_personality(self, button_index: int):
     self._params.put("LongitudinalPersonality", button_index)

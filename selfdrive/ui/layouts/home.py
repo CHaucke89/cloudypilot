@@ -7,6 +7,8 @@ from openpilot.selfdrive.ui.widgets.offroad_alerts import UpdateAlert, OffroadAl
 from openpilot.selfdrive.ui.widgets.exp_mode_button import ExperimentalModeButton
 from openpilot.selfdrive.ui.widgets.prime import PrimeWidget
 from openpilot.selfdrive.ui.widgets.setup import SetupWidget
+from openpilot.selfdrive.ui.widgets.current_model import ModelWidget
+from openpilot.selfdrive.ui.widgets.current_branch import BranchWidget
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
 from openpilot.system.ui.lib.multilang import tr, trn
@@ -57,6 +59,8 @@ class HomeLayout(Widget):
 
     self._prime_widget = PrimeWidget()
     self._setup_widget = SetupWidget()
+    self._model_widget = ModelWidget()
+    self._branch_widget = BranchWidget()
 
     self._exp_mode_button = ExperimentalModeButton()
     self._setup_callbacks()
@@ -190,7 +194,15 @@ class HomeLayout(Widget):
     self.offroad_alert.render(self.content_rect)
 
   def _render_left_column(self):
-    self._prime_widget.render(self.left_column_rect)
+    self._model_widget.render(self.left_column_rect)
+
+    branch_rect = rl.Rectangle(
+      self.left_column_rect.x,
+      self.left_column_rect.y + 400 + SPACING,
+      self.left_column_rect.width,
+      self.left_column_rect.height
+    )
+    self._branch_widget.render(branch_rect)
 
   def _render_right_column(self):
     exp_height = 125

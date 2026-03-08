@@ -68,6 +68,23 @@ class DeviceLayoutSP(DeviceLayout):
       label_callback=self._update_max_time_offroad_label
     )
 
+    self._low_voltage_shutdown = option_item_sp(
+      title=lambda: tr("Low Voltage Shutdown"),
+      description=lambda: tr("Device will shutdown if car battery reaches set voltage."),
+      param="CustomShutdownVoltage",
+      min_value=1090,
+      max_value=1350,
+      value_change_step=10,
+      on_value_changed=None,
+      enabled=True,
+      icon="",
+      value_map=None,
+      label_width=360,
+      use_float_scaling=True,
+      inline=True,
+      label_callback=self._update_low_voltage_shutdown_label
+    )
+
     self._device_wake_mode = multiple_button_item_sp(
       title=lambda: tr("Wake Up Behavior"),
       description=self.wake_mode_description,
@@ -86,6 +103,7 @@ class DeviceLayoutSP(DeviceLayout):
     )
     self._quiet_mode_and_dcam.action_item.right_button.set_button_style(ButtonStyle.NORMAL)
 
+
     self._reg_and_training = dual_button_item_sp(
       left_text=lambda: tr("Regulatory"),
       left_callback=self._on_regulatory,
@@ -93,6 +111,14 @@ class DeviceLayoutSP(DeviceLayout):
       right_callback=self._on_review_training_guide
     )
     self._reg_and_training.action_item.right_button.set_button_style(ButtonStyle.NORMAL)
+
+    self._soft_reboot_btn = dual_button_item_sp(
+      left_text=lambda: tr("Soft Reboot"),
+      left_callback=self._soft_reboot_prompt,
+      right_text="",
+      right_callback=None
+    )
+    self._soft_reboot_btn.action_item.right_button.set_visible(False)
 
     self._onroad_uploads_and_reset_settings = dual_button_item_sp(
       left_text=lambda: tr("Onroad Uploads"),
@@ -123,10 +149,14 @@ class DeviceLayoutSP(DeviceLayout):
       LineSeparator(),
       self._max_time_offroad,
       LineSeparator(height=10),
+      self._low_voltage_shutdown,
+      LineSeparator(height=10),
       self._quiet_mode_and_dcam,
       self._reg_and_training,
       self._onroad_uploads_and_reset_settings,
       Spacer(10),
+      LineSeparator(),
+      self._soft_reboot_btn,
       LineSeparator(height=10),
       self._power_buttons,
     ]
@@ -184,6 +214,12 @@ class DeviceLayoutSP(DeviceLayout):
   def _update_max_time_offroad_label(value: int) -> str:
     label = tr("Always On") if value == 0 else f"{value}" + tr("m") if value < 60 else f"{value // 60}" + tr("h")
     label += tr(" (Default)") if value == 1800 else ""
+    return label
+
+  @staticmethod
+  def _update_low_voltage_shutdown_label(value: int) -> str:
+    label = tr("Disabled") if value == 1090 else f"{value / 100}" + tr("V")
+    label += tr(" (Default)") if value == 1180 else ""
     return label
 
   def _update_state(self):

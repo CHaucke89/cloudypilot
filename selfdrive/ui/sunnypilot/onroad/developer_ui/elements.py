@@ -7,6 +7,7 @@ See the LICENSE.md file in the root directory for more details.
 import pyray as rl
 from dataclasses import dataclass
 
+from openpilot.common.params import Params
 from openpilot.common.constants import CV
 
 
@@ -246,11 +247,15 @@ class LeadSpeedElement(LeadInfoElement):
 class FrictionCoefficientElement:
   def __init__(self):
     self.unit = ""
+    self.params = Params()
 
   def update(self, sm, is_metric: bool) -> UiElement:
     ltp = sm['liveTorqueParameters']
     friction_coef = ltp.frictionCoefficientFiltered
     live_valid = ltp.liveValid
+
+    if self.params.get_bool("TorqueParamsOverrideEnabled"):
+      friction_coef = float(self.params.get("TorqueParamsOverrideFriction", return_default=True))
 
     value = f"{friction_coef:.3f}"
     color = rl.Color(0, 255, 0, 255) if live_valid else rl.WHITE
@@ -260,11 +265,15 @@ class FrictionCoefficientElement:
 class LatAccelFactorElement:
   def __init__(self):
     self.unit = ""
+    self.params = Params()
 
   def update(self, sm, is_metric: bool) -> UiElement:
     ltp = sm['liveTorqueParameters']
     lat_accel_factor = ltp.latAccelFactorFiltered
     live_valid = ltp.liveValid
+
+    if self.params.get_bool("TorqueParamsOverrideEnabled"):
+      lat_accel_factor = float(self.params.get("TorqueParamsOverrideLatAccelFactor", return_default=True))
 
     value = f"{lat_accel_factor:.3f}"
     color = rl.Color(0, 255, 0, 255) if live_valid else rl.WHITE
@@ -331,19 +340,22 @@ class BearingDegElement(GpsInfoElement):
 class AltitudeElement(GpsInfoElement):
   def __init__(self):
     self.unit = "m"
+    self.unit_ft = "ft"
 
-  def update(self, sm, is_metric: bool) -> UiElement:
+  def update(self, sm, is_metric: bool, use_imperial: bool) -> UiElement:
     gps_data, valid = self.get_gps_data(sm)
 
     gps_accuracy = 0.0
     altitude = 0.0
+    altitude_ft = 0.0
 
     if valid:
       altitude = gps_data.altitude
+      altitude_ft = altitude * 3.28084
       if sm.valid['gpsLocationExternal']:
         gps_accuracy = gps_data.horizontalAccuracy
       else:
         gps_accuracy = 1.0  # Simulate valid for legacy check
 
-    value = f"{altitude:.1f}" if gps_accuracy != 0.0 else "-"
-    return UiElement(value, "ALT.", self.unit, rl.WHITE)
+    value = f"{(altitude if not use_imperial else altitude_ft):.1f}" if gps_accuracy != 0.0 else "-"
+    return UiElement(value, "ALT.", (self.unit if not use_imperial else self.unit_ft), rl.WHITE)

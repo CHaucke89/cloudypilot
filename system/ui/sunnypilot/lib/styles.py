@@ -39,13 +39,13 @@ class Base:
 @dataclass
 class DefaultStyleSP(Base):
   # Base Colors
-  BASE_BG_COLOR = rl.Color(57, 57, 57, 255)  # Grey
-  ON_BG_COLOR = rl.Color(28, 101, 186, 255)  # Blue
-  OFF_BG_COLOR = BASE_BG_COLOR
-  ON_HOVER_BG_COLOR = rl.Color(17, 78, 150, 255)  # Dark Blue
+  BASE_BG_COLOR = rl.Color(57, 57, 57, 255) # Grey
+  ON_BG_COLOR = rl.Color(255, 140, 0, 255) # Orange
+  OFF_BG_COLOR = rl.Color(70, 70, 70, 255)  # Lighter Grey
+  ON_HOVER_BG_COLOR = rl.Color(204, 102, 0, 255) # Dark Orange
   OFF_HOVER_BG_COLOR = rl.Color(21, 21, 21, 255)  # Dark gray
-  DISABLED_ON_BG_COLOR = rl.Color(37, 70, 107, 255)  # Dull Blue
-  DISABLED_OFF_BG_COLOR = rl.Color(39, 39, 39, 255)  # Grey
+  DISABLED_ON_BG_COLOR = rl.Color(178, 115, 51, 255) # Dull Orange
+  DISABLED_OFF_BG_COLOR = rl.Color(39, 39, 39, 255) # Grey
   ITEM_TEXT_COLOR = rl.WHITE
   ITEM_DISABLED_TEXT_COLOR = rl.Color(88, 88, 88, 255)
   ITEM_DESC_TEXT_COLOR = rl.Color(128, 128, 128, 255)

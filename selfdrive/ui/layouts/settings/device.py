@@ -26,6 +26,7 @@ DESCRIPTIONS = {
   'pair_device': tr_noop("Pair your device with comma connect (connect.comma.ai) and claim your comma prime offer."),
   'driver_camera': tr_noop("Preview the driver facing camera to ensure that driver monitoring has good visibility. (vehicle must be off)"),
   'reset_calibration': tr_noop("sunnypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."),
+  'soft_reboot': tr_noop("Restart openpilot."),
   'review_guide': tr_noop("Review the rules, features, and limitations of sunnypilot"),
 }
 
@@ -171,6 +172,18 @@ class DeviceLayout(Widget):
         self._params.put_bool_nonblocking("DoReboot", True)
 
     dialog = ConfirmDialog(tr("Are you sure you want to reboot?"), tr("Reboot"), callback=perform_reboot)
+    gui_app.push_widget(dialog)
+
+  def _soft_reboot_prompt(self):
+    if ui_state.engaged:
+      gui_app.push_widget(alert_dialog(tr("Disengage to Soft Reboot")))
+      return
+
+    def perform_soft_reboot(result: DialogResult):
+      if not ui_state.engaged and result == DialogResult.CONFIRM:
+        self._params.put_bool_nonblocking("DoSoftReboot", True)
+
+    dialog = ConfirmDialog(tr("Are you sure you want to soft reboot?"), tr("Soft Reboot"), callback=perform_soft_reboot)
     gui_app.push_widget(dialog)
 
   def _power_off_prompt(self):

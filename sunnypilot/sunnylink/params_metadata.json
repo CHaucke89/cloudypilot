@@ -11,6 +11,10 @@
     "title": "Alpha Longitudinal",
     "description": ""
   },
+  "AlwaysOffDM": {
+    "title": "Always-off Driver Monitor",
+    "description": ""
+  },  
   "AlwaysOnDM": {
     "title": "Always-on Driver Monitor",
     "description": ""
@@ -216,6 +220,14 @@
     "max": 10,
     "step": 1
   },
+  "CustomShutdownVoltage": {
+    "title": "Low Voltage Shutdown",
+    "description": "Device will shutdown if car battery reaches set voltage.",
+    "min": 11.8,
+    "max": 12.8,
+    "step": 0.1,
+    "unit": "volts"
+  },
   "CustomTorqueParams": {
     "title": "Enable Custom Torque Tuning",
     "description": "Enables custom tuning for Torque lateral control"
@@ -274,8 +286,20 @@
     "title": "Driver Too Distracted",
     "description": ""
   },
+  "DynamicDamp": {
+    "title": "Dynamic Damp Factor",
+    "description": ""
+  },
+  "DynamicDeltas": {
+    "title": "Dynamic Steer Deltas",
+    "description": ""
+  },
   "DynamicExperimentalControl": {
     "title": "Dynamic Experimental Control",
+    "description": ""
+  },
+  "DynamicTorque": {
+    "title": "Dynamic Torque",
     "description": ""
   },
   "EnableCopyparty": {
@@ -942,6 +966,22 @@
     "description": "",
     "options": [
       {
+        "value": 3,
+        "label": "3s"
+      },
+      {
+        "value": 5,
+        "label": "5s"
+      },
+      {
+        "value": 7,
+        "label": "7s"
+      },
+      {
+        "value": 10,
+        "label": "10s"
+      },
+      {
         "value": 15,
         "label": "15s"
       },
@@ -990,6 +1030,10 @@
         "label": "10m"
       }
     ]
+  },
+  "OnroadScreenOffTimerMigrated": {
+    "title": "Onroad Brightness Delay Migration Version",
+    "description": "This param is to track whether OnroadScreenOffTimer needs to be migrated."
   },
   "OnroadUploads": {
     "title": "Onroad Uploads",
@@ -1294,7 +1338,7 @@
     "min": 0.1,
     "max": 5.0,
     "step": 0.1,
-    "unit": "m/s²"
+    "unit": "m/s\u00b2"
   },
   "ToyotaEnforceStockLongitudinal": {
     "title": "Toyota: Enforce Factory Longitudinal Control",

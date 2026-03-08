@@ -93,6 +93,11 @@ class VisualsLayout(Widget):
            "This displays what the car is currently doing, not what the planner is requesting."),
         None,
       ),
+      "UseImperial": (
+        lambda: tr("Use Imperial Units"),
+        tr("Use Imperial units (feet, miles) instead of metric in the Developer UI"),
+        None,
+      ),
     }
     self._toggles = {}
     for param, (title, desc, callback) in self._toggle_defs.items():
