@@ -43,6 +43,16 @@ class SteeringLayout(Widget):
     self._mads_full_desc = tr("This platform supports all MADS settings.")
     self._mads_check_compat_desc = tr("Start the vehicle to check vehicle compatibility.")
 
+    self._dynamic_torque_toggle = toggle_item_sp(
+      param="DynamicTorque",
+      title=lambda: tr("Dynamic Torque"),
+      description=lambda: tr("Automatically adjust maximum steering torque based on vehicle speed.")
+    )
+    self._dynamic_delta_toggle = toggle_item_sp(
+      param="DynamicDeltas",
+      title=lambda: tr("Dynamic Steer Deltas"),
+      description=lambda: tr("Automatically adjust the rate torque is applied based on vehicle speed.")
+    )
     self._mads_toggle = toggle_item_sp(
       param="Mads",
       title=lambda: tr("Modular Assistive Driving System (MADS)"),
@@ -98,6 +108,10 @@ class SteeringLayout(Widget):
     )
 
     items = [
+      self._dynamic_torque_toggle,
+      LineSeparatorSP(40),
+      self._dynamic_delta_toggle,
+      LineSeparatorSP(40),
       self._mads_toggle,
       self._mads_settings_button,
       LineSeparatorSP(40),
