@@ -149,6 +149,8 @@ class SteeringLayout(Widget):
       ui_state.params.remove("NeuralNetworkLateralControl")
       torque_allowed = False
 
+    self._dynamic_torque_toggle.action_item.set_visible(torque_allowed)
+    self._dynamic_delta_toggle.action_item.set_visible(torque_allowed)
     self._mads_toggle.action_item.set_enabled(ui_state.is_offroad())
     self._mads_settings_button.action_item.set_enabled(ui_state.is_offroad() and self._mads_toggle.action_item.get_state())
     self._blinker_control_options.set_visible(self._blinker_control_toggle.action_item.get_state())
