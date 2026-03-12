@@ -125,11 +125,11 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     # Adjust these offsets as needed based on your specific layout
     center_x = rect.x + rect.width - 250
     center_y = rect.y + rect.height - 220
-    size = 50
+    size = 70
     spacing = 40
 
     self.lat_accel_sub_rect = rl.Rectangle(center_x - size - spacing, center_y, size, size)
-    self.lat_accel_add_rect = rl.Rectangle(center_x + spacing, center_y, size, size)
+    self.lat_accel_add_rect = rl.Rectangle(center_x - spacing, center_y, size, size)
 
     # Draw Left Arrow (Decrease)
     rl.draw_triangle(
