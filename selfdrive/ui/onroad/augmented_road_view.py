@@ -6,6 +6,7 @@ from msgq.visionipc import VisionStreamType
 from openpilot.selfdrive.ui import UI_BORDER_SIZE
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
 from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer
+from openpilot.common.params import Params
 from openpilot.selfdrive.ui.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.onroad.hud_renderer import HudRenderer
 from openpilot.selfdrive.ui.onroad.model_renderer import ModelRenderer
@@ -56,6 +57,10 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     self._cached_matrix: np.ndarray | None = None
     self._content_rect = rl.Rectangle()
 
+    self.params = Params()
+    self.lat_accel_add_rect = rl.Rectangle(0, 0, 0, 0)
+    self.lat_accel_sub_rect = rl.Rectangle(0, 0, 0, 0)
+
     self.model_renderer = ModelRenderer()
     self._hud_renderer = HudRenderer()
     self.alert_renderer = AlertRenderer()
@@ -103,6 +108,7 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     self.driver_state_renderer.render(self._content_rect)
 
     # Custom UI extension point - add custom overlays here
+    self._draw_lat_accel_controls(self._content_rect)
     # Use self._content_rect for positioning within camera bounds
 
     # End clipping region
@@ -116,7 +122,47 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     msg.uiDebug.drawTimeMillis = (time.monotonic() - start_draw) * 1000
     self._pm.send('uiDebug', msg)
 
-  def _handle_mouse_press(self, _):
+  def _draw_lat_accel_controls(self, rect: rl.Rectangle):
+    # Position above the Lat Accel Value in Developer UI
+    # Adjust these offsets as needed based on your specific layout
+    center_x = rect.x + rect.width - 250
+    center_y = rect.y + rect.height - 220
+    size = 50
+    spacing = 40
+
+    self.lat_accel_sub_rect = rl.Rectangle(center_x - size - spacing, center_y, size, size)
+    self.lat_accel_add_rect = rl.Rectangle(center_x + spacing, center_y, size, size)
+
+    # Draw Left Arrow (Decrease)
+    rl.draw_triangle(
+      rl.Vector2(self.lat_accel_sub_rect.x + size, self.lat_accel_sub_rect.y),
+      rl.Vector2(self.lat_accel_sub_rect.x, self.lat_accel_sub_rect.y + size / 2),
+      rl.Vector2(self.lat_accel_sub_rect.x + size, self.lat_accel_sub_rect.y + size),
+      rl.WHITE
+    )
+
+    # Draw Right Arrow (Increase)
+    rl.draw_triangle(
+      rl.Vector2(self.lat_accel_add_rect.x, self.lat_accel_add_rect.y),
+      rl.Vector2(self.lat_accel_add_rect.x + size, self.lat_accel_add_rect.y + size / 2),
+      rl.Vector2(self.lat_accel_add_rect.x, self.lat_accel_add_rect.y + size),
+      rl.WHITE
+    )
+
+  def _handle_mouse_press(self, pt):
+    # Check collision with custom controls
+    click_pos = rl.Vector2(pt[0], pt[1])
+
+    if rl.check_collision_point_rec(click_pos, self.lat_accel_sub_rect):
+      val = self.params.get("TorqueParamsOverrideLatAccelFactor")
+      self.params.put_nonblocking("TorqueParamsOverrideLatAccelFactor", val - .05)
+      return
+
+    if rl.check_collision_point_rec(click_pos, self.lat_accel_add_rect):
+      val = self.params.get("TorqueParamsOverrideLatAccelFactor")
+      self.params.put_nonblocking("TorqueParamsOverrideLatAccelFactor", val + .05)
+      return
+
     if not self._hud_renderer.user_interacting() and self._click_callback is not None:
       self._click_callback()
 
