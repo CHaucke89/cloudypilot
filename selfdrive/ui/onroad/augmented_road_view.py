@@ -126,7 +126,7 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     center_x = rect.x + rect.width - 250
     center_y = rect.y + rect.height - 220
     size = 50
-    spacing = 40
+    spacing = 10
 
     self.lat_accel_sub_rect = rl.Rectangle(center_x - size - spacing, center_y, size, size)
     self.lat_accel_add_rect = rl.Rectangle(center_x + spacing, center_y, size, size)
