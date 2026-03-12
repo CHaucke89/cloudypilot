@@ -6,7 +6,6 @@ from msgq.visionipc import VisionStreamType
 from openpilot.selfdrive.ui import UI_BORDER_SIZE
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
 from openpilot.selfdrive.ui.onroad.alert_renderer import AlertRenderer
-from openpilot.common.params import Params
 from openpilot.selfdrive.ui.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.onroad.hud_renderer import HudRenderer
 from openpilot.selfdrive.ui.onroad.model_renderer import ModelRenderer
@@ -57,7 +56,6 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     self._cached_matrix: np.ndarray | None = None
     self._content_rect = rl.Rectangle()
 
-    self.params = Params()
     self.lat_accel_add_rect = rl.Rectangle(0, 0, 0, 0)
     self.lat_accel_sub_rect = rl.Rectangle(0, 0, 0, 0)
 
@@ -154,13 +152,13 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     click_pos = rl.Vector2(pt[0], pt[1])
 
     if rl.check_collision_point_rec(click_pos, self.lat_accel_sub_rect):
-      val = self.params.get("TorqueParamsOverrideLatAccelFactor")
-      self.params.put_nonblocking("TorqueParamsOverrideLatAccelFactor", val - .05)
+      val = ui_state.params.get("TorqueParamsOverrideLatAccelFactor")
+      ui_state.params.put_nonblocking("TorqueParamsOverrideLatAccelFactor", val - .05)
       return
 
     if rl.check_collision_point_rec(click_pos, self.lat_accel_add_rect):
-      val = self.params.get("TorqueParamsOverrideLatAccelFactor")
-      self.params.put_nonblocking("TorqueParamsOverrideLatAccelFactor", val + .05)
+      val = ui_state.params.get("TorqueParamsOverrideLatAccelFactor")
+      ui_state.params.put_nonblocking("TorqueParamsOverrideLatAccelFactor", val + .05)
       return
 
     if not self._hud_renderer.user_interacting() and self._click_callback is not None:
