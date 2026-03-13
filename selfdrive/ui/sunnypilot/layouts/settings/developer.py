@@ -116,7 +116,6 @@ class DeveloperLayoutSP(DeveloperLayout):
     gui_app.push_widget(dialog)
 
   def _update_state(self):
-    disable_updates = ui_state.params.get_bool("DisableUpdates")
     show_advanced = ui_state.params.get_bool("ShowAdvancedControls")
 
     if (prebuilt_file := os.path.exists(PREBUILT_PATH)) != ui_state.params.get_bool("QuickBootToggle"):
@@ -124,17 +123,14 @@ class DeveloperLayoutSP(DeveloperLayout):
       self.prebuilt_toggle.action_item.set_state(prebuilt_file)
 
     self.prebuilt_toggle.set_visible(show_advanced and not (self._is_release_branch or self._is_development_branch))
-    self.prebuilt_toggle.action_item.set_enabled(disable_updates)
+    self.prebuilt_toggle.action_item.set_enabled(True)
 
-    if disable_updates:
-      self.prebuilt_toggle.set_description(
-        tr(
-          "When toggled on, this creates a prebuilt file to allow accelerated boot times. When toggled off, it "
-          + "removes the prebuilt file so compilation of locally edited cpp files can be made."
-        )
+    self.prebuilt_toggle.set_description(
+      tr(
+        "When toggled on, this creates a prebuilt file to allow accelerated boot times. When toggled off, it "
+        + "removes the prebuilt file so compilation of locally edited cpp files can be made."
       )
-    else:
-      self.prebuilt_toggle.set_description(tr("Quickboot mode requires updates to be disabled.<br>Enable 'Disable Updates' in the Software panel first."))
+    )
 
     self.enable_copyparty_toggle.set_visible(show_advanced)
     self.enable_github_runner_toggle.set_visible(show_advanced and not self._is_release_branch)
