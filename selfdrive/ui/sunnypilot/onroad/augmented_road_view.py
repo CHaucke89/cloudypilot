@@ -24,8 +24,9 @@ class AugmentedRoadViewSP:
     # Fade out bottom of overlays for looks (only when engaged)
     fade_alpha = self._fade_alpha_filter.update(ui_state.status != UIStatus.DISENGAGED)
     if ui_state.torque_bar and fade_alpha > 1e-2:
-      # Scale the fade texture to the content rect
-      rl.draw_texture_pro(self._fade_texture,
-                          rl.Rectangle(0, 0, self._fade_texture.width, self._fade_texture.height),
-                          _content_rect, rl.Vector2(0, 0), 0.0,
-                          rl.Color(255, 255, 255, int(255 * fade_alpha)))
+      if ui_state.torque_bar_fade:
+        # Scale the fade texture to the content rect
+        rl.draw_texture_pro(self._fade_texture,
+                            rl.Rectangle(0, 0, self._fade_texture.width, self._fade_texture.height),
+                            _content_rect, rl.Vector2(0, 0), 0.0,
+                            rl.Color(255, 255, 255, int(255 * fade_alpha)))
