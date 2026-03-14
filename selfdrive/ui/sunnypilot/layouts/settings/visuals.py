@@ -39,6 +39,11 @@ class VisualsLayout(Widget):
         tr("Display steering arc on the driving screen when lateral control is enabled."),
         None,
       ),
+      "TorqueBarFade": (
+        lambda: tr("Steering Arc Fade"),
+        tr("Enable or disable the fade at the bottom of the onroad screen with Steering Arc enabled."),
+        None,
+      ),
       "RainbowMode": (
         lambda: tr("Enable Tesla Rainbow Mode"),
         tr("A beautiful rainbow effect on the path the model wants to take. " +
@@ -148,6 +153,9 @@ class VisualsLayout(Widget):
       self._chevron_info.set_description(tr(CHEVRON_INFO_DESCRIPTION["disabled"]))
       self._chevron_info.action_item.set_enabled(False)
       ui_state.params.put("ChevronInfo", 0)
+
+    torque_bar_enabled = self._toggles["TorqueBar"].action_item.get_state()
+    self._toggles["TorqueBarFade"].set_visible(torque_bar_enabled)
 
   def _render(self, rect):
     self._scroller.render(rect)
