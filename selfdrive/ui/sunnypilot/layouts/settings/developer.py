@@ -93,8 +93,8 @@ class DeveloperLayoutSP(DeveloperLayout):
       ui_state.params.put_bool("DoSoftReboot", True)
 
   def _on_konik_toggled(self, result):
-    dialog = ConfirmDialog(tr("Soft reboot required for changes to take effect. Soft reboot now?"), tr("Soft Reboot"))
-    gui_app.set_modal_overlay(dialog, callback=self._perform_reboot)
+    dialog = ConfirmDialog(tr("Soft reboot required for changes to take effect. Soft reboot now?"), tr("Soft Reboot"), callback=self._perform_soft_reboot)
+    gui_app.push_widget(dialog)
 
   def _update_state(self):
     show_advanced = ui_state.params.get_bool("ShowAdvancedControls")
