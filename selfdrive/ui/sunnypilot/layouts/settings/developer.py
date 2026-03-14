@@ -4,7 +4,6 @@ Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
 This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
-
 import datetime
 import os
 from pathlib import Path
@@ -37,45 +36,27 @@ class DeveloperLayoutSP(DeveloperLayout):
       self._scroller.add_widget(item)
 
   def _initialize_items(self):
-    self.show_advanced_controls = toggle_item_sp(
-      tr("Show Advanced Controls"),
-      tr(
-        "Toggle visibility of advanced sunnypilot controls.<br>This only changes the visibility of the toggles; "
-        + "it does not change the actual enabled/disabled state."
-      ),
-      param="ShowAdvancedControls",
-    )
+    self.show_advanced_controls = toggle_item_sp(tr("Show Advanced Controls"),
+                                                 tr("Toggle visibility of advanced sunnypilot controls.<br>This only changes the visibility of the toggles; " +
+                                                    "it does not change the actual enabled/disabled state."), param="ShowAdvancedControls")
 
-    self.enable_github_runner_toggle = toggle_item_sp(
-      tr("GitHub Runner Service"), tr("Enables or disables the GitHub runner service."), param="EnableGithubRunner"
-    )
+    self.enable_github_runner_toggle = toggle_item_sp(tr("GitHub Runner Service"), tr("Enables or disables the GitHub runner service."),
+                                                      param="EnableGithubRunner")
 
-    self.enable_copyparty_toggle = toggle_item_sp(
-      tr("copyparty Service"),
-      tr(
-        "copyparty is a very capable file server, you can use it to download your routes, view your logs "
-        + "and even make some edits on some files from your browser. "
-        + "Requires you to connect to your comma locally via its IP address."
-      ),
-      param="EnableCopyparty",
-    )
+    self.enable_copyparty_toggle = toggle_item_sp(tr("copyparty Service"),
+                                                  tr("copyparty is a very capable file server, you can use it to download your routes, view your logs " +
+                                                     "and even make some edits on some files from your browser. " +
+                                                     "Requires you to connect to your comma locally via its IP address."), param="EnableCopyparty")
 
     self.prebuilt_toggle = toggle_item_sp(tr("Quickboot Mode"), "", param="QuickBootToggle", callback=self._on_prebuilt_toggled)
 
-    self.konik_toggle = toggle_item_sp(
-      tr("Use Konik API"), tr("Use Konik's API rather than comma's. Requires reboot."), param="KonikApi", callback=self._on_konik_toggled
-    )
+    self.konik_toggle = toggle_item_sp(tr("Use Konik API"), tr("Use Konik's API rather than comma's. Requires reboot."), param="KonikApi",
+                                       callback=self._on_konik_toggled)
 
     self.error_log_btn = button_item(tr("Error Log"), tr("VIEW"), tr("View the error log for sunnypilot crashes."), callback=self._on_error_log_clicked)
 
-    self.items: list = [
-      self.show_advanced_controls,
-      self.enable_github_runner_toggle,
-      self.enable_copyparty_toggle,
-      self.prebuilt_toggle,
-      self.konik_toggle,
-      self.error_log_btn,
-    ]
+    self.items: list = [self.show_advanced_controls, self.enable_github_runner_toggle, self.enable_copyparty_toggle, self.prebuilt_toggle, self.konik_toggle,
+                        self.error_log_btn,]
 
   @staticmethod
   def _on_prebuilt_toggled(state):
@@ -107,13 +88,13 @@ class DeveloperLayoutSP(DeveloperLayout):
     dialog = HtmlModalSP(text=text, callback=lambda result: self._on_error_log_closed(result, os.path.exists(self.error_log_path)))
     gui_app.push_widget(dialog)
 
-  def _perform_soft_reboot(self, result):
+  def _perform_reboot(self, result):
     if result == DialogResult.CONFIRM:
       ui_state.params.put_bool("DoSoftReboot", True)
 
   def _on_konik_toggled(self, result):
-    dialog = ConfirmDialog(tr("Soft reboot required for changes to take effect. Soft reboot now?"), tr("Soft Reboot"), callback=self._perform_soft_reboot)
-    gui_app.push_widget(dialog)
+    dialog = ConfirmDialog(tr("Soft reboot required for changes to take effect. Soft reboot now?"), tr("Soft Reboot"))
+    gui_app.set_modal_overlay(dialog, callback=self._perform_reboot)
 
   def _update_state(self):
     show_advanced = ui_state.params.get_bool("ShowAdvancedControls")
@@ -125,12 +106,8 @@ class DeveloperLayoutSP(DeveloperLayout):
     self.prebuilt_toggle.set_visible(show_advanced and not (self._is_release_branch or self._is_development_branch))
     self.prebuilt_toggle.action_item.set_enabled(True)
 
-    self.prebuilt_toggle.set_description(
-      tr(
-        "When toggled on, this creates a prebuilt file to allow accelerated boot times. When toggled off, it "
-        + "removes the prebuilt file so compilation of locally edited cpp files can be made."
-      )
-    )
+    self.prebuilt_toggle.set_description(tr("When toggled on, this creates a prebuilt file to allow accelerated boot times. When toggled off, it " +
+                                            "removes the prebuilt file so compilation of locally edited cpp files can be made."))
 
     self.enable_copyparty_toggle.set_visible(show_advanced)
     self.enable_github_runner_toggle.set_visible(show_advanced and not self._is_release_branch)
