@@ -88,7 +88,7 @@ class DeveloperLayoutSP(DeveloperLayout):
     dialog = HtmlModalSP(text=text, callback=lambda result: self._on_error_log_closed(result, os.path.exists(self.error_log_path)))
     gui_app.push_widget(dialog)
 
-  def _perform_reboot(self, result):
+  def _perform_soft_reboot(self, result):
     if result == DialogResult.CONFIRM:
       ui_state.params.put_bool("DoSoftReboot", True)
 
