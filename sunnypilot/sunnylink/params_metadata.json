@@ -14,7 +14,7 @@
   "AlwaysOffDM": {
     "title": "Always-off Driver Monitor",
     "description": ""
-  },  
+  },
   "AlwaysOnDM": {
     "title": "Always-on Driver Monitor",
     "description": ""
@@ -286,7 +286,7 @@
     "title": "Driver Too Distracted",
     "description": ""
   },
-  "DynamicDamp": {
+  "DynamicDampFactor": {
     "title": "Dynamic Damp Factor",
     "description": ""
   },
