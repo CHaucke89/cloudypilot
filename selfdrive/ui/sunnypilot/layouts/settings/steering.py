@@ -53,6 +53,11 @@ class SteeringLayout(Widget):
       title=lambda: tr("Dynamic Steer Deltas"),
       description=lambda: tr("Automatically adjust the rate torque is applied based on vehicle speed.")
     )
+    self._dynamic_damp_toggle = toggle_item_sp(
+      param="DynamicDampFactor",
+      title=lambda: tr("Dynamic Damp Factor"),
+      description=lambda: tr("Automatically adjust the damp factor to stabilize the steering wheel when using stock long.")
+    )
     self._mads_toggle = toggle_item_sp(
       param="Mads",
       title=lambda: tr("Modular Assistive Driving System (MADS)"),
@@ -111,6 +116,8 @@ class SteeringLayout(Widget):
       self._dynamic_torque_toggle,
       LineSeparatorSP(40),
       self._dynamic_delta_toggle,
+      LineSeparatorSP(40),
+      self._dynamic_damp_toggle,
       LineSeparatorSP(40),
       self._mads_toggle,
       self._mads_settings_button,
