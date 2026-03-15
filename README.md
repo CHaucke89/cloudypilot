@@ -10,6 +10,7 @@ Some of the additional features and/or changes in no particular order:
 - Dynamic "damp factor" when using stock longitudinal control
 - Dynamic maximum steering torque & steer deltas
 - Use Imperial units (feet) in the on-road developer UI rather than SI units (meters)
+- Permanent seatbelt latch - allows engaging while the driver's seatbelt is unlatched
 - Modified torque tune logic - Offline and Live tuning can be enabled or disabled independent of one another
   - Live tuning can be enabled or disabled and values can be modified while onroad
   - Live tuning can be enabled or disabled regardless of automatic self tune being enabled
@@ -20,6 +21,7 @@ Some of the additional features and/or changes in no particular order:
 - Current active model widget on home screen with a button to open the Models settings page
 - Current branch widget on home screen with a button to open the Software settings page
 - Enter/Exit Always Offroad Mode widget on home screen
+- "Soft" reboot - all standard reboots are replaced with soft reboots (```sudo systemctl restart comma```) and a Soft Reboot button is added to the Device settings page
 - Various UI changes, mainly colors
 - Git LFS removed/not used (all files are present in the repo)
 - Any branch may be broken at any time - this is a free time hobby and only meant for myself, but as an avid supporter of open source software, it doesn't feel right to make this repo private.
