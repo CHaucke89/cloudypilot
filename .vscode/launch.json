@@ -79,8 +79,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/chaucke/Development/MoneyPilot/tools/cabana/streams",
-      "program": "/home/chaucke/Development/MoneyPilot/tools/cabana/streams/build/Debug/outDebug",
+      "cwd": "/home/chaucke/Development/cloudypilot/tools/cabana/streams",
+      "program": "/home/chaucke/Development/cloudypilot/tools/cabana/streams/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

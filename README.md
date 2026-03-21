@@ -30,7 +30,7 @@ If you decide to install this, you do so at your own risk!
 
 
 # Licensing
-Just as sunnypilot is a heavily modified version of openpilot, MoneyPilot is a...moderately modified version of sunnypilot. Credit for the vast majority of the codebase goes to the openpilot and sunnypilot developers.
+Just as sunnypilot is a heavily modified version of openpilot, cloudypilot is a...moderately modified version of sunnypilot. Credit for the vast majority of the codebase goes to the openpilot and sunnypilot developers.
 
 > "This project uses software from Haibin Wen and SUNNYPILOT LLC and is licensed under a custom license requiring permission for use."
 
