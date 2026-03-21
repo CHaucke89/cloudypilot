@@ -1,0 +1,31 @@
+name: release
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  build___nightly:
+    name: build __nightly
+    runs-on: ubuntu-latest
+    if: github.repository == 'sunnypilot/sunnypilot'
+    permissions:
+      checks: read
+      contents: write
+    steps:
+    - name: Wait for green check mark
+      if: ${{ github.event_name == 'schedule' }}
+      uses: lewagon/wait-on-check-action@ccfb013c15c8afb7bf2b7c028fb74dc5a068cccc
+      with:
+        ref: master
+        wait-interval: 30
+        running-workflow-name: 'build __nightly'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        check-regexp: ^((?!.*(build prebuilt|create badges).*).)*$
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+    - run: ./tools/op.sh setup
+    - name: Push __nightly
+      run: BRANCH=__nightly release/build_stripped.sh
