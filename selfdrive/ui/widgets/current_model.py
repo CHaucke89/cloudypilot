@@ -20,7 +20,7 @@ class ModelWidget(Widget):
     self._open_models_callback = callback
 
   def _render(self, rect: rl.Rectangle):
-    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 425), 0.04, 20, rl.Color(51, 51, 51, 255))
+    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 400), 0.04, 20, rl.Color(51, 51, 51, 255))
 
     x = rect.x + 56
     y = rect.y + 40
