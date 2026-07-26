@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+TOUCH_COUNT="/sys/devices/platform/soc/894000.i2c/i2c-2/2-0017/touch_count"
+FAKE_TOUCH_COUNT="/data/touch_count"
+
 
 source "$DIR/launch_env.sh"
 
@@ -27,6 +30,37 @@ function agnos_init {
     while true; do
       $DIR/openpilot/common/hardware/comma/updater $AGNOS_PY $MANIFEST
     done
+  fi
+}
+
+function setup_aliases {
+  BASH_ALIASES="$HOME/.bash_aliases";
+  ALIASES="alias gf='git fetch'
+  alias gsu='git submodule update --recursive'
+  alias gp='git pull'
+  alias grh='git reset --hard'
+  alias rb='sudo reboot'
+  alias sr='sudo systemctl restart comma'
+  alias sc='scons -u -j8'
+  alias update='gp && gsu && rb'
+  alias supdate='gp && gsu && sr'
+  alias ta='tmux a'
+  alias srta='sr && sleep 2 && ta'";
+
+  grep -qxF "$ALIASES" "$BASH_ALIASES" || echo "$ALIASES" > "$BASH_ALIASES";
+}
+
+function override_touch_count {
+  # Mount fake touch_count on launch to avoid system reset prompt with soft reboot.
+  # Bind mount does not persist across reboots, so default behavior is preserved with a standard reboot.
+  if ! grep -q "/dev/sda12 $TOUCH_COUNT" /etc/mtab; then
+    echo "touch_count entry not found in mtab"
+    if [ ! -f "$FAKE_TOUCH_COUNT" ]; then
+      echo "Dummy touch_count not found, creating"
+      echo -e "0" > $FAKE_TOUCH_COUNT
+    fi
+    echo "Bind mounting dummy touch_count"
+    sudo mount --bind -o ro $FAKE_TOUCH_COUNT $TOUCH_COUNT
   fi
 }
 
@@ -99,4 +133,6 @@ function launch {
   while true; do sleep 1; done
 }
 
+override_touch_count
+setup_aliases
 launch
