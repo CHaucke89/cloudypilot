@@ -173,6 +173,18 @@ class DeviceLayout(Widget):
     dialog = ConfirmDialog(tr("Are you sure you want to reboot?"), tr("Reboot"), callback=perform_reboot)
     gui_app.push_widget(dialog)
 
+  def _soft_reboot_prompt(self):
+    if ui_state.engaged:
+      gui_app.push_widget(alert_dialog(tr("Disengage to Soft Reboot")))
+      return
+
+    def perform_soft_reboot(result: DialogResult):
+      if not ui_state.engaged and result == DialogResult.CONFIRM:
+        self._params.put_bool("DoSoftReboot", True, block=True)
+
+    dialog = ConfirmDialog(tr("Are you sure you want to soft reboot?"), tr("Soft Reboot"), callback=perform_soft_reboot)
+    gui_app.push_widget(dialog)
+
   def _power_off_prompt(self):
     if ui_state.engaged:
       gui_app.push_widget(alert_dialog(tr("Disengage to Power Off")))
