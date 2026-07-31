@@ -20,6 +20,9 @@ if gui_app.sunnypilot_ui():
   from openpilot.selfdrive.ui.sunnypilot.onroad.hud_renderer import HudRendererSP as HudRenderer
   from openpilot.selfdrive.ui.sunnypilot.ui_state import OnroadTimerStatus
 
+if gui_app.cloudypilot_ui():
+  from openpilot.selfdrive.ui.cloudypilot.onroad.augmented_road_view import BORDER_COLORS_CP
+
 OpState = log.SelfdriveState.OpenpilotState
 CALIBRATED = log.ExtrinsicsCalibration.Status.calibrated
 NARROW_ROAD_CAM = VisionStreamType.VISION_STREAM_NARROW_ROAD
@@ -31,6 +34,7 @@ BORDER_COLORS = {
   UIStatus.OVERRIDE: rl.Color(0x89, 0x92, 0x8D, 0xFF),  # Gray for override state
   UIStatus.ENGAGED: rl.Color(0x16, 0x7F, 0x40, 0xFF),  # Green for engaged state
   **BORDER_COLORS_SP,
+  **BORDER_COLORS_CP,
 }
 
 WIDE_CAM_MAX_SPEED = 10.0  # m/s (22 mph)
