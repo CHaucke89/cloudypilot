@@ -36,6 +36,8 @@ class Spinner(Widget):
   def __init__(self):
     super().__init__()
     self._comma_texture = gui_app.texture("../../sunnypilot/selfdrive/assets/images/spinner_sunnypilot.png", TEXTURE_SIZE, TEXTURE_SIZE)
+    if gui_app.cloudypilot_ui():
+      self._comma_texture = gui_app.texture("../../cloudypilot/selfdrive/assets/images/spinner_cloudypilot.png", TEXTURE_SIZE, TEXTURE_SIZE)
     self._spinner_texture = gui_app.texture("images/spinner_track.png", TEXTURE_SIZE, TEXTURE_SIZE, alpha_premultiply=True)
     self._rotation = 0.0
     self._progress: int | None = None
