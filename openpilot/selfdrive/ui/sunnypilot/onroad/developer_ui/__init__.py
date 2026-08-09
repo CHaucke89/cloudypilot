@@ -12,7 +12,8 @@ from openpilot.selfdrive.ui.sunnypilot.onroad.developer_ui.elements import (
   UiElement, RelDistElement, RelSpeedElement, SteeringAngleElement,
   DesiredLateralAccelElement, ActualLateralAccelElement, DesiredSteeringAngleElement,
   AEgoElement, LeadSpeedElement, FrictionCoefficientElement, LatAccelFactorElement,
-  SteeringTorqueEpsElement, BearingDegElement, AltitudeElement, DesiredSteeringPIDElement
+  SteeringTorqueEpsElement, BearingDegElement, AltitudeElement, DesiredSteeringPIDElement,
+  TorqueReductionGainElement
 )
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.text_measure import measure_text_cached
@@ -53,6 +54,8 @@ class DeveloperUiRenderer(Widget):
     self.steering_torque_elem = SteeringTorqueEpsElement()
     self.bearing_elem = BearingDegElement()
     self.altitude_elem = AltitudeElement()
+
+    self.torque_reduction_gain_elem = TorqueReductionGainElement()
 
   def _update_state(self) -> None:
     self.dev_ui_mode = ui_state.developer_ui
@@ -151,8 +154,7 @@ class DeveloperUiRenderer(Widget):
       # Non-torque: show steering torque and GPS data
       elements.append(self.steering_torque_elem.update(sm, ui_state.is_metric))
 
-      if sm.valid['gpsLocationExternal'] or sm.valid['gpsLocation']:
-        elements.append(self.bearing_elem.update(sm, ui_state.is_metric))
+      elements.append(self.torque_reduction_gain_elem.update(sm, ui_state.is_metric))
 
     # Add altitude if GPS available
     if sm.valid['gpsLocationExternal'] or sm.valid['gpsLocation']:

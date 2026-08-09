@@ -173,6 +173,7 @@ class UIStateSP:
     self.standstill_timer = self.params.get_bool("StandstillTimer")
     self.sunnylink_enabled = self.params.get_bool("SunnylinkEnabled")
     self.torque_bar = self.params.get_bool("TorqueBar")
+    self.torque_bar_fade = self.params.get_bool("TorqueBarFade")
     self.enforce_torque_control = self.params.get_bool("EnforceTorqueControl")
     self.custom_torque_params = self.params.get_bool("CustomTorqueParams")
     self.torque_override_enabled = self.params.get_bool("TorqueParamsOverrideEnabled")
