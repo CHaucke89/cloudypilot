@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.text_measure import measure_text_cached
+from opendbc.car.hyundai.carcontroller import compute_torque_reduction_gain
 
 
 @dataclass
@@ -150,6 +151,29 @@ class DesiredSteeringAngleElement(LateralControlElement):
         color = rl.Color(0, 255, 0, 255)
 
     return UiElement(value, "DESIRED STEER", self.unit, color)
+
+
+class TorqueReductionGainElement(LateralControlElement):
+  def __init__(self):
+    self.unit = ""
+    self.last_gain = 0.0
+
+  def update(self, sm, is_metric: bool) -> UiElement:
+    car_state = sm['carState']
+    lat_active = sm['carControl'].latActive
+
+    torque_reduction_gain = compute_torque_reduction_gain(
+      steering_torque=car_state.steeringTorque,
+      v_ego=car_state.vEgo,
+      lat_active=lat_active,
+      last_gain=self.last_gain
+    )
+
+    self.last_gain = torque_reduction_gain
+    value = f"{torque_reduction_gain:.3f}" if lat_active else "-"
+    color = self.get_lat_color(lat_active, car_state.steeringPressed)
+
+    return UiElement(value, "TQ GAIN", self.unit, color)
 
 
 class ActualLateralAccelElement(LateralControlElement):
