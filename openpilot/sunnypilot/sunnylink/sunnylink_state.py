@@ -16,6 +16,9 @@ from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from openpilot.sunnypilot.sunnylink.api import UNREGISTERED_SUNNYLINK_DONGLE_ID, SunnylinkApi
 from openpilot.system.ui.sunnypilot.lib.styles import style
+from openpilot.system.ui.lib.application import gui_app
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.lib.styles import style
 
 
 class RoleType(IntEnum):
