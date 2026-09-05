@@ -290,7 +290,7 @@ class Updater:
       try:
         branch = self.get_branch(basedir)
         commit = self.get_commit_hash(basedir)[:7]
-        with open(os.path.join(basedir, "openpilot", "sunnypilot", "common", "version.h")) as f:
+        with open(os.path.join(basedir, "openpilot", "cloudypilot", "common", "version.h")) as f:
           version = f.read().split('"')[1]
 
         commit_unix_ts = run(["git", "show", "-s", "--format=%ct", "HEAD"], basedir).rstrip()
@@ -298,7 +298,7 @@ class Updater:
         commit_date = dt.strftime("%b %d")
       except Exception:
         cloudlog.exception("updater.get_description")
-      return f"{version} / {branch} / {commit} / {commit_date}"
+      return f"{version} | {branch} | {commit} | {commit_date}"
     self.params.put("UpdaterCurrentDescription", get_description(BASEDIR), block=True)
     self.params.put("UpdaterCurrentReleaseNotes", parse_release_notes(BASEDIR), block=True)
     self.params.put("UpdaterNewDescription", get_description(FINALIZED), block=True)
