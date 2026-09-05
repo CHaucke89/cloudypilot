@@ -31,6 +31,10 @@ from openpilot.system.ui.sunnypilot.widgets.tree_dialog import TreeOptionDialog,
 if gui_app.sunnypilot_ui():
   from openpilot.system.ui.sunnypilot.widgets.list_view import button_item_sp as button_item
 
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.lib.styles import style
+  from openpilot.system.ui.cloudypilot.widgets.list_view import option_item_cp
+
 
 class ModelsLayout(Widget):
   def __init__(self):
@@ -101,10 +105,10 @@ class ModelsLayout(Widget):
 
     self.lagd_toggle = toggle_item_sp(tr("Live Learning Steer Delay"), "", param="LagdToggle")
 
-    self.camera_offset = option_item_sp(tr("Adjust Camera Offset"), "CameraOffset", -35, 35,
+    self.camera_offset = option_item_cp(tr("Adjust Camera Offset"), "CameraOffset", -35, 35,
                                         tr("Virtually shift camera's perspective to move model's center to Left(+ values) or Right (- values)"),
                                         1, None, True, "", style.BUTTON_ACTION_WIDTH, None, True,
-                                        lambda v: f"{v / 100:.2f} m")
+                                        lambda v: f"{v / 100:.2f} m", reset_enabled=True)
 
     self.items = [self.small_model_item, self.big_model_item, self.cancel_download_item, self.download_item, self.refresh_item, self.clear_cache_item,
                   self.lane_turn_desire_toggle, self.lane_turn_value_control, self.lagd_toggle, self.delay_control, self.camera_offset]
