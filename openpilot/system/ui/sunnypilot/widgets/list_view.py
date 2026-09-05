@@ -18,6 +18,8 @@ from openpilot.system.ui.widgets.list_view import ListItem, ToggleAction, ItemAc
                                                   _resolve_value, BUTTON_WIDTH, BUTTON_HEIGHT, TEXT_PADDING, DualButtonAction
 from openpilot.system.ui.widgets.scroller_tici import LineSeparator, LINE_COLOR, LINE_PADDING
 from openpilot.system.ui.sunnypilot.lib.styles import style
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.widgets.option_control import OptionControlSP, LABEL_WIDTH
 
 

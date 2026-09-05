@@ -8,8 +8,7 @@ from dataclasses import dataclass, field
 
 import pyray as rl
 from openpilot.common.params import Params
-from openpilot.system.ui.lib.application import TextAlignment
-from openpilot.system.ui.lib.application import FontWeight
+from openpilot.system.ui.lib.application import FontWeight, TextAlignment, gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import DialogResult
 from openpilot.system.ui.widgets.button import Button, ButtonStyle, BUTTON_PRESSED_BACKGROUND_COLORS
@@ -17,6 +16,8 @@ from openpilot.system.ui.widgets.label import gui_label
 from openpilot.system.ui.widgets.option_dialog import MultiOptionDialog
 
 from openpilot.system.ui.sunnypilot.lib.styles import style
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.lib.styles import style
 from openpilot.system.ui.sunnypilot.widgets.helpers.fuzzy_search import search_from_list
 from openpilot.system.ui.sunnypilot.widgets.helpers.star_icon import draw_star
 from openpilot.system.ui.sunnypilot.widgets.input_dialog import InputDialogSP
