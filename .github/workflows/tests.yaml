@@ -59,7 +59,7 @@ jobs:
       working-directory: ${{ env.STRIPPED_DIR }}
       run: tools/release/check-dirty.sh
     - name: Check submodules
-      if: github.repository == 'sunnypilot/sunnypilot'
+      if: github.repository == 'CHaucke89/cloudypilot'
       timeout-minutes: 3
       run: |
         if [ "${{ github.ref }}" != "refs/heads/master" ]; then
