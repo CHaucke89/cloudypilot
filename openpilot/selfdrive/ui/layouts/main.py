@@ -5,7 +5,7 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.widgets import Widget
 from openpilot.selfdrive.ui.layouts.sidebar import Sidebar, SIDEBAR_WIDTH
 from openpilot.selfdrive.ui.layouts.home import HomeLayout
-from openpilot.selfdrive.ui.layouts.settings.settings import SettingsLayout, PanelType
+from openpilot.selfdrive.ui.layouts.settings.settings import SettingsLayout
 from openpilot.selfdrive.ui.onroad.augmented_road_view import AugmentedRoadView
 from openpilot.selfdrive.ui.ui_state import device, ui_state
 from openpilot.selfdrive.ui.layouts.onboarding import OnboardingWindow
@@ -14,6 +14,13 @@ from openpilot.selfdrive.ui.body.layouts.onroad import BodyLayout
 if gui_app.sunnypilot_ui():
   from openpilot.selfdrive.ui.sunnypilot.layouts.settings.settings import SettingsLayoutSP as SettingsLayout
   from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP as HomeLayout
+
+if gui_app.cloudypilot_ui():
+  from openpilot.selfdrive.ui.sunnypilot.layouts.settings.settings import SettingsLayoutSP as SettingsLayout
+  from openpilot.selfdrive.ui.cloudypilot.layouts.home import HomeLayoutCP as HomeLayout
+
+# Re-import PanelType after sunnypilot conditionals to pick up any modifications
+from openpilot.selfdrive.ui.layouts.settings.settings import PanelType
 
 
 class MainState(IntEnum):
