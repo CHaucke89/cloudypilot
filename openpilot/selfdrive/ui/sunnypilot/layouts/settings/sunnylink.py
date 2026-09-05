@@ -21,6 +21,8 @@ from openpilot.system.ui.widgets.label import UnifiedLabel
 from openpilot.system.ui.widgets.list_view import dual_button_item
 from openpilot.system.ui.widgets.scroller_tici import Scroller, LineSeparator
 from openpilot.common.version import sunnylink_consent_version
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.widgets.list_view import LineSeparatorCP as LineSeparator
 
 
 class SunnylinkHeader(Widget):

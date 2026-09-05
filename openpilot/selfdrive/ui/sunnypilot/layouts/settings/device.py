@@ -17,6 +17,8 @@ from openpilot.system.ui.widgets.button import ButtonStyle
 from openpilot.system.ui.widgets.confirm_dialog import alert_dialog, ConfirmDialog
 from openpilot.system.ui.widgets.list_view import text_item
 from openpilot.system.ui.widgets.scroller_tici import LineSeparator
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.widgets.list_view import LineSeparatorCP as LineSeparator
 
 offroad_time_options = {
   0: 0,
@@ -92,6 +94,13 @@ class DeviceLayoutSP(DeviceLayout):
       right_text=lambda: tr("Training Guide"),
       right_callback=self._on_review_training_guide
     )
+    self._soft_reboot_btn = dual_button_item_sp(
+      left_text=lambda: tr("Soft Reboot"),
+      left_callback=self._soft_reboot_prompt,
+      right_text="",
+      right_callback=None
+    )
+    self._soft_reboot_btn.action_item.right_button.set_visible(False)
     self._reg_and_training.action_item.right_button.set_button_style(ButtonStyle.NORMAL)
 
     self._onroad_uploads_and_reset_settings = dual_button_item_sp(
@@ -127,9 +136,21 @@ class DeviceLayoutSP(DeviceLayout):
       self._reg_and_training,
       self._onroad_uploads_and_reset_settings,
       Spacer(10),
+      LineSeparator(),
+      self._soft_reboot_btn,
       LineSeparator(height=10),
       self._power_buttons,
     ]
+
+
+    self._power_buttons = dual_button_item_sp(
+      left_text=lambda: tr("Reboot"),
+      right_text=lambda: tr("Power Off"),
+      left_callback=self._reboot_prompt,
+      right_callback=self._power_off_prompt
+    )
+    self._reboot_btn = self._power_buttons.action_item.left_button
+    self._power_btn = self._power_buttons.action_item.right_button
 
     return items
 

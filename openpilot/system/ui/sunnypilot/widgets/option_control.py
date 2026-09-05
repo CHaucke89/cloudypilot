@@ -4,6 +4,8 @@ from openpilot.common.params import Params
 from openpilot.system.ui.lib.application import gui_app, FontWeight, MousePos
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.sunnypilot.lib.styles import style
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.lib.styles import style
 from openpilot.system.ui.widgets.list_view import ItemAction
 
 # Dimensions and styling constants

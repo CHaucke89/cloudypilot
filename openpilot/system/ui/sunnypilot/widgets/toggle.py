@@ -8,9 +8,11 @@ from collections.abc import Callable
 
 import pyray as rl
 from openpilot.common.params import Params
-from openpilot.system.ui.lib.application import MousePos
+from openpilot.system.ui.lib.application import MousePos, gui_app
 from openpilot.system.ui.widgets.toggle import Toggle
 from openpilot.system.ui.sunnypilot.lib.styles import style
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.lib.styles import style
 
 KNOB_PADDING = 5
 KNOB_RADIUS = style.TOGGLE_BG_HEIGHT / 2 - KNOB_PADDING
