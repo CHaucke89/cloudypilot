@@ -108,41 +108,52 @@ class TogglesLayout(Widget):
 
     self._toggles = {}
     self._locked_toggles = set()
+    items = self._initialize_items()
+
+    self._update_experimental_mode_icon()
+    self._scroller = Scroller(items, line_separator=True, spacing=0)
+
+    ui_state.add_engaged_transition_callback(self._update_toggles)
+
+  def _initialize_items(self):
+    items = []
     for param, (title, desc, icon, needs_restart) in self._toggle_defs.items():
-      toggle = toggle_item(
-        title,
-        desc,
-        self._params.get_bool(param),
-        callback=lambda state, p=param: self._toggle_callback(state, p),
-        icon=icon,
-      )
-
-      try:
-        locked = self._params.get_bool(param + "Lock")
-      except UnknownKeyName:
-        locked = False
-      toggle.action_item.set_enabled(not locked)
-
-      # Make description callable for live translation
-      additional_desc = ""
-      if needs_restart and not locked:
-        additional_desc = tr("Changing this setting will restart sunnypilot if the car is powered on.")
-      toggle.set_description(lambda og_desc=toggle.description, add_desc=additional_desc: tr(og_desc) + (" " + tr(add_desc) if add_desc else ""))
-
-      # track for engaged state updates
-      if locked:
-        self._locked_toggles.add(param)
-
-      self._toggles[param] = toggle
+      items.append(self._build_toggle(param, title, desc, icon, needs_restart))
 
       # insert longitudinal personality after NDOG toggle
       if param == "DisengageOnAccelerator":
         self._toggles["LongitudinalPersonality"] = self._long_personality_setting
+        items.append(self._long_personality_setting)
 
-    self._update_experimental_mode_icon()
-    self._scroller = Scroller(list(self._toggles.values()), line_separator=True, spacing=0)
+    return items
 
-    ui_state.add_engaged_transition_callback(self._update_toggles)
+  def _build_toggle(self, param, title, desc, icon, needs_restart):
+    toggle = toggle_item(
+      title,
+      desc,
+      self._params.get_bool(param),
+      callback=lambda state, p=param: self._toggle_callback(state, p),
+      icon=icon,
+    )
+
+    try:
+      locked = self._params.get_bool(param + "Lock")
+    except UnknownKeyName:
+      locked = False
+    toggle.action_item.set_enabled(not locked)
+
+    # Make description callable for live translation
+    additional_desc = ""
+    if needs_restart and not locked:
+      additional_desc = tr("Changing this setting will restart sunnypilot if the car is powered on.")
+    toggle.set_description(lambda og_desc=toggle.description, add_desc=additional_desc: tr(og_desc) + (" " + tr(add_desc) if add_desc else ""))
+
+    # track for engaged state updates
+    if locked:
+      self._locked_toggles.add(param)
+
+    self._toggles[param] = toggle
+    return toggle
 
   def _update_state(self):
     if ui_state.sm.updated["selfdriveState"]:
