@@ -36,6 +36,7 @@ if gui_app.cloudypilot_ui():
   from openpilot.selfdrive.ui.cloudypilot.layouts.settings.display import DisplayLayoutCP as DisplayLayout
   from openpilot.selfdrive.ui.cloudypilot.layouts.settings.models import ModelsLayoutCP as ModelsLayout
   from openpilot.selfdrive.ui.cloudypilot.layouts.settings.steering import SteeringLayoutCP as SteeringLayout
+  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.toggles import TogglesLayoutCP as TogglesLayout
   from openpilot.selfdrive.ui.cloudypilot.layouts.settings.visuals import VisualsLayoutCP as VisualsLayout
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.scroller_tici import Scroller
