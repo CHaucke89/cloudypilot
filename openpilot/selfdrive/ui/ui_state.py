@@ -16,6 +16,7 @@ from openpilot.common.hardware.usb import TYPEC_CC_ORIENTATION_PATH, get_usb_sta
 from openpilot.selfdrive.modeld.helpers import chestnut_compiled
 
 from openpilot.selfdrive.ui.sunnypilot.ui_state import UIStateSP, DeviceSP
+from openpilot.selfdrive.ui.cloudypilot.ui_state import UIStateCP
 
 BACKLIGHT_OFFROAD = 65 if HARDWARE.get_device_type() == "mici" else 50
 PARAM_UPDATE_TIME = 1 / 5.0
@@ -38,7 +39,7 @@ class ChestnutState(Enum):
   FAILED = "failed"
 
 
-class UIState(UIStateSP):
+class UIState(UIStateSP, UIStateCP):
   _instance: 'UIState | None' = None
 
   def __new__(cls):
@@ -49,6 +50,7 @@ class UIState(UIStateSP):
 
   def _initialize(self):
     UIStateSP.__init__(self)
+    UIStateCP.__init__(self)
     self.params = Params()
     self.sm = messaging.SubMaster(
       [
@@ -278,6 +280,7 @@ class UIState(UIStateSP):
         self.usb_unknown = False
 
     UIStateSP.update_params(self)
+    UIStateCP.update_params(self)
 
 
 class Device(DeviceSP):
