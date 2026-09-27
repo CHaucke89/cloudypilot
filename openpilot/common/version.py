@@ -12,9 +12,11 @@ from openpilot.common.git import get_commit, get_origin, get_branch, get_short_b
 
 RELEASE_SP_BRANCHES = ['release-c3', 'release', 'release-tizi', 'release-tici', 'release-tizi-staging', 'release-tici-staging']
 TESTED_SP_BRANCHES = ['staging-c3', 'staging-c3-new', 'staging']
-MASTER_SP_BRANCHES = ['master']
+MASTER_SP_BRANCHES = ['master-sp']
 RELEASE_BRANCHES = ['release-tizi-staging', 'release-mici-staging', 'release-tizi', 'release-mici', 'nightly']
 TESTED_BRANCHES = RELEASE_BRANCHES + ['devel-staging', 'nightly-dev'] + RELEASE_SP_BRANCHES + TESTED_SP_BRANCHES
+
+MASTER_CP_BRANCHES = ['master']
 
 CHESTNUT_BRANCHES = {
   "staging": "staging-chestnut",
@@ -117,6 +119,10 @@ class OpenpilotMetadata:
                                           "github.com/sunnyhaibin/sunnypilot",
                                           "github.com/sunnyhaibin/openpilot")
 
+  def cloudypilot_remote(self) -> bool:
+    return self.git_normalized_origin in ("github.com/CHaucke89/cloudypilot",
+                                          "github.com/CHaucke89/openpilot")
+
   @property
   def git_normalized_origin(self) -> str:
     return self.git_origin \
@@ -153,7 +159,7 @@ class BuildMetadata:
 
   @property
   def master_channel(self) -> bool:
-    return self.channel in MASTER_SP_BRANCHES
+    return self.channel in [MASTER_SP_BRANCHES, MASTER_CP_BRANCHES]
 
   @property
   def development_channel(self) -> bool:
