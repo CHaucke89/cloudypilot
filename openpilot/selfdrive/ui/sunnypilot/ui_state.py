@@ -14,6 +14,8 @@ from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_active_s
 from openpilot.sunnypilot.sunnylink.sunnylink_state import SunnylinkState
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.sunnypilot.widgets.screen_saver import ScreenSaverSP
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.widgets.screen_saver import ScreenSaverCP as ScreenSaverSP
 
 OpenpilotState = log.SelfdriveState.OpenpilotState
 MADSState = custom.ModularAssistiveDrivingSystem.ModularAssistiveDrivingSystemState
@@ -173,7 +175,6 @@ class UIStateSP:
     self.standstill_timer = self.params.get_bool("StandstillTimer")
     self.sunnylink_enabled = self.params.get_bool("SunnylinkEnabled")
     self.torque_bar = self.params.get_bool("TorqueBar")
-    self.torque_bar_fade = self.params.get_bool("TorqueBarFade")
     self.enforce_torque_control = self.params.get_bool("EnforceTorqueControl")
     self.custom_torque_params = self.params.get_bool("CustomTorqueParams")
     self.torque_override_enabled = self.params.get_bool("TorqueParamsOverrideEnabled")

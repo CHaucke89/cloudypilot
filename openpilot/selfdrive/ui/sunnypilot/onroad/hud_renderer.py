@@ -21,6 +21,8 @@ from openpilot.selfdrive.ui.onroad.hud_renderer import HudRenderer, UI_CONFIG, F
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
+if gui_app.cloudypilot_ui():
+  from openpilot.selfdrive.ui.cloudypilot.onroad.developer_ui import DeveloperUiRendererCP as DeveloperUiRenderer
 
 SLA_ACTIVE_COLOR = rl.Color(0x91, 0x9b, 0x95, 0xff)
 

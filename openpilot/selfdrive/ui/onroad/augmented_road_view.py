@@ -21,7 +21,7 @@ if gui_app.sunnypilot_ui():
   from openpilot.selfdrive.ui.sunnypilot.ui_state import OnroadTimerStatus
 
 if gui_app.cloudypilot_ui():
-  from openpilot.selfdrive.ui.cloudypilot.onroad.augmented_road_view import BORDER_COLORS_CP
+  from openpilot.selfdrive.ui.cloudypilot.onroad.augmented_road_view import BORDER_COLORS_CP, AugmentedRoadViewCP as AugmentedRoadViewSP
 
 OpState = log.SelfdriveState.OpenpilotState
 CALIBRATED = log.ExtrinsicsCalibration.Status.calibrated
@@ -42,7 +42,7 @@ ROAD_CAM_MIN_SPEED = 15.0  # m/s (34 mph)
 INF_POINT = np.array([1000.0, 0.0, 0.0])
 
 
-class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
+class AugmentedRoadView(CameraView, AugmentedRoadViewSP):  # ty: ignore[unsupported-base]
   def __init__(self, stream_type: VisionStreamType = VisionStreamType.VISION_STREAM_NARROW_ROAD):
     CameraView.__init__(self, "camerad", stream_type)
     AugmentedRoadViewSP.__init__(self)
