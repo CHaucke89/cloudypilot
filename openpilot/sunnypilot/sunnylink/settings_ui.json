@@ -504,40 +504,6 @@
           ]
         },
         {
-          "id": "steer_ratio",
-          "title": "Steer Ratio",
-          "description": "Custom steering ratio tuning and presets",
-          "items": [
-            {
-              "key": "UseCustomSR",
-              "widget": "toggle",
-              "title": "Enable Custom Steer Ratio",
-              "description": "Enable custom steering ratio tuning to override default vehicle steering ratio.",
-              "sub_items": [
-                {
-                  "key": "CustomSR",
-                  "widget": "option",
-                  "title": "Steer Ratio",
-                  "description": "Adjust the steering ratio.",
-                  "min": 10.0,
-                  "max": 20.0,
-                  "step": 0.1,
-                  "enablement": [
-                    {
-                      "type": "offroad_only"
-                    },
-                    {
-                      "type": "param",
-                      "key": "UseCustomSR",
-                      "equals": true
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
           "id": "lane_change",
           "title": "Lane Change",
           "description": "Automatic lane change timing and behavior",
