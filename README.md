@@ -7,6 +7,24 @@ If comma connect is valuable to you, tread carefully if you decide to install th
 If you do not use comma connect or use an alternative like stable.konik.ai, then you have nothing to worry about...except your life while letting this fork operate a motor vehicle with you in it.
 
 Just kidding, it's not that bad.
+Some of the additional features and/or changes in no particular order:
+
+#### Toggles / Controls:
+- Override the learned steer ratio value with a custom fixed value
+- Custom low-voltage shutdown value - change the minimum car battery voltage that triggers a device shutdown
+- Use Imperial units (feet) in the on-road developer UI rather than SI units (meters)
+- Steering Arc - background fade effect is broken out to its own toggle
+- Konik API toggle - use the stable.konik.ai API rather than connect.comma.ai
+- Post-Blinker Delay - delay reengagement of lateral control for 0-10 seconds after the blinker turns off with Pause Lateral Control with Blinker - **this has since been merged into upstream sunnypilot**
+
+#### Misc:
+- "Soft" reboot - implemented a workaround to allow soft reboots via ```sudo systemctl restart comma``` without triggering a system reset prompt & added a Soft Reboot button to the Device panel
+  - Stock behavior is preserved with a standard hardware reboot (tapping the screen during boot still triggers the reset prompt)
+- Implemented "reset to default" functionality for option control items such as the custom Steer Ratio - tap the value itself to reset
+- Current active model widget on home screen
+- Current branch widget on home screen
+- Enter/Exit Always Offroad Mode widget on home screen
+- Many UI changes
 
 **Do not install the ```ch-dev``` branch as it is locked to a specific device. Any branch may be broken at any time - this is primarily just for me, but as a big supporter of FOSS, it doesn't feel right to keep this private.**
 **If you spot any features or modifications you would like to see upstream in sunnypilot, let me know and I can open a PR if feasible.**
