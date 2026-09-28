@@ -302,6 +302,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"AlwaysOffDM", {PERSISTENT, BOOL}},
     {"AuthorizedHash", {PERSISTENT, STRING}},
     {"CommaDongleId", {PERSISTENT, STRING}},
+    {"CustomShutdownVoltage", {PERSISTENT, FLOAT, "11.8"}},
     {"CustomSR", {PERSISTENT, FLOAT, "16.0"}},
     {"DoSoftReboot", {CLEAR_ON_MANAGER_START, BOOL}},
     {"KonikApi", {PERSISTENT | BACKUP, BOOL, "0"}},
