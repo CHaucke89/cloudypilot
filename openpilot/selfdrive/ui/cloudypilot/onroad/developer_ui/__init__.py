@@ -1,13 +1,14 @@
 import pyray as rl
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.selfdrive.ui.sunnypilot.onroad.developer_ui import DeveloperUiRenderer
-from openpilot.selfdrive.ui.cloudypilot.onroad.developer_ui.elements import TorqueReductionGainElement
+from openpilot.selfdrive.ui.cloudypilot.onroad.developer_ui.elements import TorqueReductionGainElement, AltitudeElement
 
 
 class DeveloperUiRendererCP(DeveloperUiRenderer):
   def __init__(self):
     super().__init__()
     self.torque_reduction_gain_elem = TorqueReductionGainElement()
+    self.altitude_elem = AltitudeElement()
 
   def _draw_bottom_dev_ui(self, rect: rl.Rectangle) -> None:
     sm = ui_state.sm
