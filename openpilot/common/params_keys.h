@@ -310,4 +310,5 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"PermaLatch", {PERSISTENT, BOOL}},
     {"TorqueBarFade", {PERSISTENT, BOOL, "1"}},
     {"UseCustomSR", {PERSISTENT, BOOL, "0"}},
+    {"UseFeetGPS", {PERSISTENT, BOOL, "0"}},
 };
