@@ -31,7 +31,7 @@ class TorqueReductionGainElement(LateralControlElement):
 
 class AltitudeElement(GpsInfoElement):
   def __init__(self):
-    self.unit = "m"
+    self.unit = ""
 
   def update(self, sm, use_feet: bool) -> UiElement:
     gps_data, valid = self.get_gps_data(sm)
