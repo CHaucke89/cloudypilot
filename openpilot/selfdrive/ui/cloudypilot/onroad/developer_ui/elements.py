@@ -3,6 +3,8 @@ import pyray as rl
 from opendbc.car.hyundai.carcontroller import compute_torque_reduction_gain
 from openpilot.selfdrive.ui.sunnypilot.onroad.developer_ui.elements import LateralControlElement, UiElement, GpsInfoElement
 
+METER_TO_FOOT = 3.28084
+
 
 class TorqueReductionGainElement(LateralControlElement):
   def __init__(self):
@@ -26,6 +28,7 @@ class TorqueReductionGainElement(LateralControlElement):
 
     return UiElement(value, "TQ GAIN", self.unit, color)
 
+
 class AltitudeElement(GpsInfoElement):
   def __init__(self):
     self.unit = "m"
@@ -36,12 +39,10 @@ class AltitudeElement(GpsInfoElement):
     gps_accuracy = 0.0
     altitude = 0.0
 
+    self.unit = "ft" if use_feet else "m"
+
     if valid:
-      if use_feet:
-        altitude = gps_data.altitude * 3.28084
-        self.unit = "ft"
-      else:
-        altitude = gps_data.altitude
+      altitude = gps_data.altitude * METER_TO_FOOT if use_feet else gps_data.altitude
       if sm.valid['gpsLocationExternal']:
         gps_accuracy = gps_data.horizontalAccuracy
       else:

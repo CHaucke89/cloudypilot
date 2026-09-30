@@ -27,9 +27,27 @@ class VisualsLayoutCP(VisualsLayout):
     )
 
     items.insert(items.index(self._toggles["TorqueBar"]) + 1, self._toggles[param])
+
+    param = "UseFeetGPS"
+    self._toggle_defs[param] = (
+      lambda: tr("Developer UI: Use Feet"),
+      tr("Display GPS altitude in feet instead of meters on the bottom Developer UI bar."),
+      None,
+    )
+    title, desc, callback = self._toggle_defs[param]
+    self._toggles[param] = toggle_item_sp(
+      title=title,
+      description=desc,
+      param=param,
+      initial_state=ui_state.params.get_bool(param),
+      callback=callback,
+    )
+
+    items.insert(items.index(self._dev_ui_info) + 1, self._toggles[param])
     return items
 
   def _update_state(self):
     super()._update_state()
 
     self._toggles["TorqueBarFade"].set_visible(self._toggles["TorqueBar"].action_item.get_state())
+    self._toggles["UseFeetGPS"].set_visible(ui_state.params.get("DevUIInfo", return_default=True) in (1, 3))
