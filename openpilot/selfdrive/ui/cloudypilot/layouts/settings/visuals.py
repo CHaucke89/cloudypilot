@@ -30,7 +30,7 @@ class VisualsLayoutCP(VisualsLayout):
 
     param = "UseFeetGPS"
     self._toggle_defs[param] = (
-      lambda: tr("Developer UI: Use Feet"),
+      lambda: tr("Altitude: Use Feet"),
       tr("Display GPS altitude in feet instead of meters on the bottom Developer UI bar."),
       None,
     )
