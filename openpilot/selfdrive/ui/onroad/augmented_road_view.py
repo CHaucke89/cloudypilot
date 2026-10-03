@@ -22,6 +22,7 @@ if gui_app.sunnypilot_ui():
 
 if gui_app.cloudypilot_ui():
   from openpilot.selfdrive.ui.cloudypilot.onroad.augmented_road_view import BORDER_COLORS_CP, AugmentedRoadViewCP as AugmentedRoadViewSP
+  from openpilot.selfdrive.ui.cloudypilot.onroad.model_renderer import ModelRendererCP as ModelRenderer
 
 OpState = log.SelfdriveState.OpenpilotState
 CALIBRATED = log.ExtrinsicsCalibration.Status.calibrated
