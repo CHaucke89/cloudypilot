@@ -83,6 +83,12 @@ class FrameStreamer:
       return
     self.last_capture_time = now_mono
 
+    # Ensure all queued draw commands are flushed before reading pixels.
+    # This keeps remote captures complete while still sampling before end_drawing().
+    flush_batch = getattr(pr, "rl_draw_render_batch_active", None)
+    if callable(flush_batch):
+      flush_batch()
+
     rl_image = pr.load_image_from_screen()
     try:
       width = rl_image.width
