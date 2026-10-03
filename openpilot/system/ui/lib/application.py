@@ -617,6 +617,8 @@ class GuiApplication(GuiApplicationExtSP, GuiApplicationExtCP):
 
       while not (self._window_close_requested or rl.window_should_close()):
         frame_start = time.monotonic()
+        frame_time = rl.get_frame_time()
+        cpu_time = time.monotonic() - frame_start
 
         if PC:
           # Thread is not used on PC, need to manually add mouse events
@@ -654,10 +656,6 @@ class GuiApplication(GuiApplicationExtSP, GuiApplicationExtCP):
         for widget in self._nav_stack[-self._nav_stack_widgets_to_render:]:
           widget.render(rl.Rectangle(0, 0, self.width, self.height))
 
-        frame_time = rl.get_frame_time()
-        cpu_time = time.monotonic() - frame_start
-        yield True, frame_time, cpu_time
-
         if self._scale != 1.0:
           rl.rl_pop_matrix()
 
@@ -689,6 +687,9 @@ class GuiApplication(GuiApplicationExtSP, GuiApplicationExtCP):
           self._draw_grid()
 
         rl.end_drawing()
+
+        # Yield has to happen after end_drawing() or the remote UI will send partially rendered frames
+        yield True, frame_time, cpu_time
 
         if RECORD:
           image = rl.load_image_from_texture(self._render_texture.texture)
