@@ -22,6 +22,7 @@ def main():
   config_realtime_process(0, Priority.CTRL_HIGH)
 
   gui_app.init_window("UI")
+  remote.stream_frame()
   if BIG_UI:
     MainLayout()
   else:
@@ -45,7 +46,7 @@ def main():
       msg.uiDebug.cpuTimeMillis = (cpu_time + extra_cpu) * 1000
       msg.uiDebug.frameTimeMillis = frame_time * 1000
       pm.send('uiDebug', msg)
-      remote.stream_frame()
+
 
   remote.close()
 
