@@ -30,6 +30,29 @@ If comma Connect is important to you, consider these risks carefully before inst
 - Show the active model, current branch, and Always Offroad Mode controls on the home screen.
 - Include additional user-interface changes.
 
+# Remote UI Stream
+
+Cloudypilot incorporates the [raylib implementation of the openpilot remote UI streamer](https://github.com/CHaucke89/op-remote-ui). The server is part of this repo and launches from:
+
+- `openpilot/cloudypilot/system/remote_ui/stream_server.py`
+
+When launching with `launch_openpilot.sh`, the stream server starts automatically by default and serves on port `8081`.
+
+- Browser URL: `http://<device-ip>:8081`
+- Log file: `/tmp/cloudypilot_stream_server.log`
+
+To disable this feature for a run:
+
+```bash
+CP_REMOTE_UI_STREAM=0 ./launch_openpilot.sh
+```
+
+If you want to run the server manually:
+
+```bash
+python3 openpilot/cloudypilot/system/remote_ui/stream_server.py
+```
+
 ## Branch guidance
 
 Do **not** install the `ch-dev` branch; it is locked to a specific device. Any branch may be broken at any time. This project is primarily maintained for personal use, but is public so others can inspect and improve it.
