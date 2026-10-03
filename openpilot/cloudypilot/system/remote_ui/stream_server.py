@@ -800,7 +800,7 @@ def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
   return False
 
 
-if __name__ == '__main__':
+def main() -> None:
   wait_for_wifi()
 
   print("=" * 60)
