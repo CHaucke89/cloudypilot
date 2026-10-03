@@ -26,7 +26,7 @@ import pyray as pr
 # Must match openpilot/cloudypilot/system/remote_ui/stream_server.py and the legacy C++ SharedFrame struct.
 SHM_NAME = "openpilot_ui_frames"  # created at /dev/shm/openpilot_ui_frames
 FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes (max 1080p RGBA)
-METADATA_SIZE = 31                 # packed header, see HEADER_FMT below
+METADATA_SIZE = 31  # packed header, see HEADER_FMT below
 SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE  # 8,294,431 bytes
 
 # Packed struct (little-endian, no alignment padding):
@@ -40,99 +40,99 @@ FRAME_RATE_LIMIT = 10  # FPS
 
 
 class FrameStreamer:
-    def __init__(self):
-        self.last_capture_time = 0.0
-        self.frame_interval = 1.0 / FRAME_RATE_LIMIT
-        self.shm = None
-        self._init_shm()
+  def __init__(self):
+    self.last_capture_time = 0.0
+    self.frame_interval = 1.0 / FRAME_RATE_LIMIT
+    self.shm = None
+    self._init_shm()
 
-    def _init_shm(self):
-        # Match the C++ behavior: unlink any stale segment, then (re)create.
-        try:
-            stale = shm.SharedMemory(name=SHM_NAME)
-            stale.close()
-            stale.unlink()
-        except FileNotFoundError:
-            pass
-        except Exception as e:
-            print(f"FrameStreamer: could not clear stale shm: {e}")
+  def _init_shm(self):
+    # Match the C++ behavior: unlink any stale segment, then (re)create.
+    try:
+      stale = shm.SharedMemory(name=SHM_NAME)
+      stale.close()
+      stale.unlink()
+    except FileNotFoundError:
+      pass
+    except Exception as e:
+      print(f"FrameStreamer: could not clear stale shm: {e}")
 
-        try:
-            self.shm = shm.SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
-            # Zero the header so a reader never sees a stale ready flag.
-            buf = self.shm.buf
-            assert buf is not None
-            buf[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
-            print(f"FrameStreamer: shared memory ready ({SHM_SIZE} bytes)")
-        except Exception as e:
-            print(f"FrameStreamer: failed to init shared memory: {e}")
-            self.shm = None
+    try:
+      self.shm = shm.SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
+      # Zero the header so a reader never sees a stale ready flag.
+      buf = self.shm.buf
+      assert buf is not None
+      buf[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
+      print(f"FrameStreamer: shared memory ready ({SHM_SIZE} bytes)")
+    except Exception as e:
+      print(f"FrameStreamer: failed to init shared memory: {e}")
+      self.shm = None
 
-    def stream_frame(self):
-        """Capture the current raylib framebuffer and publish it.
+  def stream_frame(self):
+    """Capture the current raylib framebuffer and publish it.
 
-        Must be called from the render thread while a frame is on screen
-        (i.e. before end_drawing swaps the buffers).
-        """
-        shm_buf = self.shm.buf if self.shm is not None else None
-        if shm_buf is None:
-            return
+    Must be called from the render thread while a frame is on screen
+    (i.e. before end_drawing swaps the buffers).
+    """
+    shm_buf = self.shm.buf if self.shm is not None else None
+    if shm_buf is None:
+      return
 
-        now_mono = time.monotonic()
-        if (now_mono - self.last_capture_time) < self.frame_interval:
-            return
-        self.last_capture_time = now_mono
+    now_mono = time.monotonic()
+    if (now_mono - self.last_capture_time) < self.frame_interval:
+      return
+    self.last_capture_time = now_mono
 
-        rl_image = pr.load_image_from_screen()
-        try:
-            width = rl_image.width
-            height = rl_image.height
-            if not width or not height:
-                return
+    rl_image = pr.load_image_from_screen()
+    try:
+      width = rl_image.width
+      height = rl_image.height
+      if not width or not height:
+        return
 
-            data_size = width * height * 4
-            if data_size <= 0:
-                return
+      data_size = width * height * 4
+      if data_size <= 0:
+        return
 
-            # Read raw RGBA bytes from pyray's cffi pointer safely.
-            rgba = bytes(pr.ffi.buffer(rl_image.data, data_size))
+      # Read raw RGBA bytes from pyray's cffi pointer safely.
+      rgba = bytes(pr.ffi.buffer(rl_image.data, data_size))
 
-            # load_image_from_screen already returns top-to-bottom orientation.
-            pil_img = Image.frombuffer("RGBA", (width, height), rgba, "raw", "RGBA", 0, 1)
-            pil_img = pil_img.convert("RGB")  # JPEG has no alpha channel
+      # load_image_from_screen already returns top-to-bottom orientation.
+      pil_img = Image.frombuffer("RGBA", (width, height), rgba, "raw", "RGBA", 0, 1)
+      pil_img = pil_img.convert("RGB")  # JPEG has no alpha channel
 
-            with io.BytesIO() as out:
-                pil_img.save(out, format="JPEG", quality=JPEG_QUALITY)
-                jpeg = out.getvalue()
+      with io.BytesIO() as out:
+        pil_img.save(out, format="JPEG", quality=JPEG_QUALITY)
+        jpeg = out.getvalue()
 
-            if len(jpeg) > FRAME_DATA_SIZE:
-                print(f"FrameStreamer: frame too large ({len(jpeg)} bytes), dropping")
-                return
+      if len(jpeg) > FRAME_DATA_SIZE:
+        print(f"FrameStreamer: frame too large ({len(jpeg)} bytes), dropping")
+        return
 
-            # Write payload first, then the header with ready=1 last, so the
-            # reader never sees ready=1 pointing at stale/partial data.
-            shm_buf[METADATA_SIZE:METADATA_SIZE + len(jpeg)] = jpeg
-            header = struct.pack(
-                HEADER_FMT,
-                int(time.clock_gettime(time.CLOCK_REALTIME) * 1000),  # epoch timestamp (ms)
-                width,
-                height,
-                len(jpeg),
-                FORMAT_JPEG,
-                1,                # ready
-            )
-            shm_buf[0:METADATA_SIZE] = header
-        except Exception as e:
-            print(f"FrameStreamer error: {e}")
-        finally:
-            # Free the raylib image memory to avoid leaking a frame per tick.
-            pr.unload_image(rl_image)
+      # Write payload first, then the header with ready=1 last, so the
+      # reader never sees ready=1 pointing at stale/partial data.
+      shm_buf[METADATA_SIZE : METADATA_SIZE + len(jpeg)] = jpeg
+      header = struct.pack(
+        HEADER_FMT,
+        int(time.clock_gettime(time.CLOCK_REALTIME) * 1000),  # epoch timestamp (ms)
+        width,
+        height,
+        len(jpeg),
+        FORMAT_JPEG,
+        1,  # ready
+      )
+      shm_buf[0:METADATA_SIZE] = header
+    except Exception as e:
+      print(f"FrameStreamer error: {e}")
+    finally:
+      # Free the raylib image memory to avoid leaking a frame per tick.
+      pr.unload_image(rl_image)
 
-    def close(self):
-        if self.shm is not None:
-            try:
-                self.shm.close()
-                self.shm.unlink()
-            except Exception:
-                pass
-            self.shm = None
+  def close(self):
+    if self.shm is not None:
+      try:
+        self.shm.close()
+        self.shm.unlink()
+      except Exception:
+        pass
+      self.shm = None

@@ -35,197 +35,184 @@ frame_queue = queue.Queue(maxsize=10)
 websocket_clients = set()
 clients_lock = threading.Lock()
 
+
 # Frame cache for efficient streaming
 class FrameCache:
-    def __init__(self, max_frames=3):
-        self.frames = deque(maxlen=max_frames)
-        self.lock = threading.Lock()
-        self.latest_timestamp = 0
-        self.latest_frame = None
+  def __init__(self, max_frames=3):
+    self.frames = deque(maxlen=max_frames)
+    self.lock = threading.Lock()
+    self.latest_timestamp = 0
+    self.latest_frame = None
 
-    def add_frame(self, timestamp: int, data: bytes, width: int, height: int):
-        with self.lock:
-            if timestamp > self.latest_timestamp:
-                frame_info = {
-                    'timestamp': timestamp,
-                    'data': data,
-                    'size': len(data),
-                    'width': width,
-                    'height': height
-                }
-                self.frames.append(frame_info)
-                self.latest_timestamp = timestamp
-                self.latest_frame = frame_info
-                return True
-            return False
+  def add_frame(self, timestamp: int, data: bytes, width: int, height: int):
+    with self.lock:
+      if timestamp > self.latest_timestamp:
+        frame_info = {'timestamp': timestamp, 'data': data, 'size': len(data), 'width': width, 'height': height}
+        self.frames.append(frame_info)
+        self.latest_timestamp = timestamp
+        self.latest_frame = frame_info
+        return True
+      return False
 
-    def get_latest(self):
-        with self.lock:
-            return self.latest_frame
+  def get_latest(self):
+    with self.lock:
+      return self.latest_frame
 
-    def get_stats(self):
-        with self.lock:
-            total_size = sum(f['size'] for f in self.frames)
-            return {
-                'frames_cached': len(self.frames),
-                'total_memory_kb': total_size // 1024,
-                'latest_timestamp': self.latest_timestamp
-            }
+  def get_stats(self):
+    with self.lock:
+      total_size = sum(f['size'] for f in self.frames)
+      return {'frames_cached': len(self.frames), 'total_memory_kb': total_size // 1024, 'latest_timestamp': self.latest_timestamp}
+
 
 frame_cache = FrameCache()
 
+
 # Shared memory reader
 class SharedMemoryReader:
-    def __init__(self):
-        self.shm_fd = None
-        self.shm_map = None
-        self.running = False
-        self.last_timestamp = 0
+  def __init__(self):
+    self.shm_fd = None
+    self.shm_map = None
+    self.running = False
+    self.last_timestamp = 0
 
-    def connect(self):
-        """Connect to shared memory created by Qt application"""
-        try:
-            # Open existing shared memory
-            shm_path = f"/dev/shm{SHM_NAME}"
+  def connect(self):
+    """Connect to shared memory created by Qt application"""
+    try:
+      # Open existing shared memory
+      shm_path = f"/dev/shm{SHM_NAME}"
 
-            # Check if file exists and get its size
-            if os.path.exists(shm_path):
-                stat_info = os.stat(shm_path)
-                actual_size = stat_info.st_size
+      # Check if file exists and get its size
+      if os.path.exists(shm_path):
+        stat_info = os.stat(shm_path)
+        actual_size = stat_info.st_size
 
-                if actual_size == 0:
-                    print("Shared memory exists but is empty (0 bytes)")
-                    return False
-                elif actual_size < SHM_SIZE:
-                    print(f"Shared memory exists but is smaller than expected: {actual_size} < {SHM_SIZE}")
-                    # Try to map with the actual size instead
-                    self.shm_fd = os.open(shm_path, os.O_RDONLY)
-                    self.shm_map = mmap.mmap(self.shm_fd, actual_size, mmap.MAP_SHARED, mmap.PROT_READ)
-                    print(f"Connected to shared memory with reduced size: {actual_size} bytes")
-                    return True
-                else:
-                    # Normal case - full size available
-                    self.shm_fd = os.open(shm_path, os.O_RDONLY)
-                    self.shm_map = mmap.mmap(self.shm_fd, SHM_SIZE, mmap.MAP_SHARED, mmap.PROT_READ)
-                    print(f"Connected to shared memory: {SHM_NAME} ({SHM_SIZE} bytes)")
-                    return True
-            else:
-                print(f"Shared memory not found at {shm_path}")
-                return False
+        if actual_size == 0:
+          print("Shared memory exists but is empty (0 bytes)")
+          return False
+        elif actual_size < SHM_SIZE:
+          print(f"Shared memory exists but is smaller than expected: {actual_size} < {SHM_SIZE}")
+          # Try to map with the actual size instead
+          self.shm_fd = os.open(shm_path, os.O_RDONLY)
+          self.shm_map = mmap.mmap(self.shm_fd, actual_size, mmap.MAP_SHARED, mmap.PROT_READ)
+          print(f"Connected to shared memory with reduced size: {actual_size} bytes")
+          return True
+        else:
+          # Normal case - full size available
+          self.shm_fd = os.open(shm_path, os.O_RDONLY)
+          self.shm_map = mmap.mmap(self.shm_fd, SHM_SIZE, mmap.MAP_SHARED, mmap.PROT_READ)
+          print(f"Connected to shared memory: {SHM_NAME} ({SHM_SIZE} bytes)")
+          return True
+      else:
+        print(f"Shared memory not found at {shm_path}")
+        return False
 
-        except Exception as e:
-            print(f"Failed to connect to shared memory: {e}")
-            return False
+    except Exception as e:
+      print(f"Failed to connect to shared memory: {e}")
+      return False
 
-    def read_frame(self):
-        """Read frame from shared memory"""
+  def read_frame(self):
+    """Read frame from shared memory"""
+    if not self.shm_map:
+      return None
+
+    try:
+      # Read metadata - matching C++ packed SharedFrame struct
+      self.shm_map.seek(0)
+      timestamp = struct.unpack('<Q', self.shm_map.read(8))[0]  # uint64_t (little-endian)
+      width = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
+      height = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
+      size = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
+      format_type = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
+      ready = struct.unpack('B', self.shm_map.read(1))[0]  # uint8_t
+
+      # Skip 6 bytes of padding
+      self.shm_map.read(6)
+
+      if ready == 0 or size == 0 or timestamp <= self.last_timestamp:
+        return None
+
+      # Data starts right after padding (at offset 31)
+      frame_data = self.shm_map.read(size)
+
+      self.last_timestamp = timestamp
+
+      return {'timestamp': timestamp, 'width': width, 'height': height, 'size': size, 'format': 'jpeg' if format_type == 1 else 'raw', 'data': frame_data}
+    except Exception as e:
+      print(f"Error reading frame: {e}")
+      return None
+
+  def start_monitoring(self):
+    """Start monitoring shared memory for new frames"""
+    self.running = True
+
+    def monitor_loop():
+      retry_count = 0
+      frame_count = 0
+
+      while self.running:
+        # Try to connect if not connected
         if not self.shm_map:
-            return None
-
-        try:
-            # Read metadata - matching C++ packed SharedFrame struct
-            self.shm_map.seek(0)
-            timestamp = struct.unpack('<Q', self.shm_map.read(8))[0]  # uint64_t (little-endian)
-            width = struct.unpack('<I', self.shm_map.read(4))[0]      # uint32_t
-            height = struct.unpack('<I', self.shm_map.read(4))[0]     # uint32_t
-            size = struct.unpack('<I', self.shm_map.read(4))[0]       # uint32_t
-            format_type = struct.unpack('<I', self.shm_map.read(4))[0] # uint32_t
-            ready = struct.unpack('B', self.shm_map.read(1))[0]       # uint8_t
-
-            # Skip 6 bytes of padding
-            self.shm_map.read(6)
-
-            if ready == 0 or size == 0 or timestamp <= self.last_timestamp:
-                return None
-
-            # Data starts right after padding (at offset 31)
-            frame_data = self.shm_map.read(size)
-
-            self.last_timestamp = timestamp
-
-            return {
-                'timestamp': timestamp,
-                'width': width,
-                'height': height,
-                'size': size,
-                'format': 'jpeg' if format_type == 1 else 'raw',
-                'data': frame_data
-            }
-        except Exception as e:
-            print(f"Error reading frame: {e}")
-            return None
-
-    def start_monitoring(self):
-        """Start monitoring shared memory for new frames"""
-        self.running = True
-
-        def monitor_loop():
+          if self.connect():
             retry_count = 0
-            frame_count = 0
+          else:
+            retry_count += 1
+            time.sleep(2 if retry_count < 10 else 10)
+            continue
 
-            while self.running:
-                # Try to connect if not connected
-                if not self.shm_map:
-                    if self.connect():
-                        retry_count = 0
-                    else:
-                        retry_count += 1
-                        time.sleep(2 if retry_count < 10 else 10)
-                        continue
+        # Read frame
+        frame = self.read_frame()
+        if frame:
+          frame_count += 1
+          # Add to cache
+          if frame_cache.add_frame(frame['timestamp'], frame['data'], frame['width'], frame['height']):
+            # Broadcast to all WebSocket clients
+            with clients_lock:
+              if websocket_clients:
+                # Create frame message
+                frame_msg = json.dumps(
+                  {
+                    'type': 'frame',
+                    'timestamp': frame['timestamp'],
+                    'width': frame['width'],
+                    'height': frame['height'],
+                    'format': frame['format'],
+                    'data': base64.b64encode(frame['data']).decode('utf-8'),
+                  }
+                )
 
-                # Read frame
-                frame = self.read_frame()
-                if frame:
-                    frame_count += 1
-                    # Add to cache
-                    if frame_cache.add_frame(frame['timestamp'], frame['data'],
-                                            frame['width'], frame['height']):
+                # Add to queue for all clients
+                try:
+                  frame_queue.put_nowait(frame_msg)
+                except queue.Full:
+                  # Remove oldest frame if queue is full
+                  try:
+                    frame_queue.get_nowait()
+                    frame_queue.put_nowait(frame_msg)
+                  except Exception:
+                    pass
 
-                        # Broadcast to all WebSocket clients
-                        with clients_lock:
-                            if websocket_clients:
-                                # Create frame message
-                                frame_msg = json.dumps({
-                                    'type': 'frame',
-                                    'timestamp': frame['timestamp'],
-                                    'width': frame['width'],
-                                    'height': frame['height'],
-                                    'format': frame['format'],
-                                    'data': base64.b64encode(frame['data']).decode('utf-8')
-                                })
+            # Debug: Check if frame data is valid JPEG
+            if frame_count % 10 == 0:
+              # Check JPEG header
+              if frame['data'][:2] == b'\xff\xd8':
+                print(f"Frame {frame_count}: Valid JPEG, {frame['size']} bytes, {frame['width']}x{frame['height']}")
+              else:
+                print(f"Frame {frame_count}: INVALID DATA! First bytes: {frame['data'][:10].hex() if frame['data'] else 'empty'}")
 
-                                # Add to queue for all clients
-                                try:
-                                    frame_queue.put_nowait(frame_msg)
-                                except queue.Full:
-                                    # Remove oldest frame if queue is full
-                                    try:
-                                        frame_queue.get_nowait()
-                                        frame_queue.put_nowait(frame_msg)
-                                    except:
-                                        pass
+        time.sleep(0.05)  # Check 20 times per second for low latency
 
-                        # Debug: Check if frame data is valid JPEG
-                        if frame_count % 10 == 0:
-                            # Check JPEG header
-                            if frame['data'][:2] == b'\xff\xd8':
-                                print(f"Frame {frame_count}: Valid JPEG, {frame['size']} bytes, {frame['width']}x{frame['height']}")
-                            else:
-                                print(f"Frame {frame_count}: INVALID DATA! First bytes: {frame['data'][:10].hex() if frame['data'] else 'empty'}")
+    thread = threading.Thread(target=monitor_loop, daemon=True)
+    thread.start()
+    print("Frame monitoring started")
 
-                time.sleep(0.05)  # Check 20 times per second for low latency
+  def close(self):
+    """Clean up shared memory connection"""
+    self.running = False
+    if self.shm_map:
+      self.shm_map.close()
+    if self.shm_fd:
+      os.close(self.shm_fd)
 
-        thread = threading.Thread(target=monitor_loop, daemon=True)
-        thread.start()
-        print("Frame monitoring started")
-
-    def close(self):
-        """Clean up shared memory connection"""
-        self.running = False
-        if self.shm_map:
-            self.shm_map.close()
-        if self.shm_fd:
-            os.close(self.shm_fd)
 
 shm_reader = SharedMemoryReader()
 
@@ -655,174 +642,180 @@ HTML_PAGE = """
 </html>
 """
 
+
 @app.route('/')
 def index():
-    return render_template_string(HTML_PAGE)
+  return render_template_string(HTML_PAGE)
+
 
 @app.route('/input', methods=['POST'])
 def handle_input():
-    """Handle input events from web client"""
-    data = request.get_json()
-    event_type = data.get('type', 'click')
-    print(f"Received {event_type} event: {data}")
+  """Handle input events from web client"""
+  data = request.get_json()
+  event_type = data.get('type', 'click')
+  print(f"Received {event_type} event: {data}")
 
-    # Send to Qt application via Unix socket
-    try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.connect('/tmp/ui_touch_socket')
-            message = json.dumps({
-                **data,
-                'timestamp': time.monotonic()
-            })
-            sock.send(message.encode())
-            return jsonify({'status': 'success'})
-    except Exception as e:
-        print(f"Failed to send input event: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+  # Send to Qt application via Unix socket
+  try:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+      sock.connect('/tmp/ui_touch_socket')
+      message = json.dumps({**data, 'timestamp': time.monotonic()})
+      sock.send(message.encode())
+      return jsonify({'status': 'success'})
+  except Exception as e:
+    print(f"Failed to send input event: {e}")
+    return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @sock.route('/stream')
 def stream(ws):
-    """WebSocket endpoint for real-time frame streaming"""
-    client_id = id(ws)
-    print(f"Client {client_id} connected")
+  """WebSocket endpoint for real-time frame streaming"""
+  client_id = id(ws)
+  print(f"Client {client_id} connected")
 
-    with clients_lock:
-        websocket_clients.add(ws)
-        client_count = len(websocket_clients)
+  with clients_lock:
+    websocket_clients.add(ws)
+    client_count = len(websocket_clients)
 
-    print(f"Total clients: {client_count}")
+  print(f"Total clients: {client_count}")
 
-    try:
-        # Send current frame immediately if available
-        latest = frame_cache.get_latest()
-        if latest:
-            initial_msg = json.dumps({
-                'type': 'frame',
-                'timestamp': latest['timestamp'],
-                'width': latest['width'],
-                'height': latest['height'],
-                'format': 'jpeg',
-                'data': base64.b64encode(latest['data']).decode('utf-8')
-            })
-            ws.send(initial_msg)
-            print(f"Sent initial frame to client {client_id}")
+  try:
+    # Send current frame immediately if available
+    latest = frame_cache.get_latest()
+    if latest:
+      initial_msg = json.dumps(
+        {
+          'type': 'frame',
+          'timestamp': latest['timestamp'],
+          'width': latest['width'],
+          'height': latest['height'],
+          'format': 'jpeg',
+          'data': base64.b64encode(latest['data']).decode('utf-8'),
+        }
+      )
+      ws.send(initial_msg)
+      print(f"Sent initial frame to client {client_id}")
 
-        # Main streaming loop
-        while True:
-            try:
-                # Wait for new frames with timeout
-                frame_msg = frame_queue.get(timeout=5)
+    # Main streaming loop
+    while True:
+      try:
+        # Wait for new frames with timeout
+        frame_msg = frame_queue.get(timeout=5)
 
-                # Send frame to this client
-                ws.send(frame_msg)
+        # Send frame to this client
+        ws.send(frame_msg)
 
-                # Clear the queue item
-                frame_queue.task_done()
+        # Clear the queue item
+        frame_queue.task_done()
 
-            except queue.Empty:
-                # Send keepalive/stats
-                stats = frame_cache.get_stats()
-                ws.send(json.dumps({
-                    'type': 'stats',
-                    'frames_cached': stats['frames_cached'],
-                    'memory_kb': stats['total_memory_kb']
-                }))
-            except Exception as e:
-                print(f"Error sending to client {client_id}: {e}")
-                break
+      except queue.Empty:
+        # Send keepalive/stats
+        stats = frame_cache.get_stats()
+        ws.send(json.dumps({'type': 'stats', 'frames_cached': stats['frames_cached'], 'memory_kb': stats['total_memory_kb']}))
+      except Exception as e:
+        print(f"Error sending to client {client_id}: {e}")
+        break
 
-            # Check for client messages (like frame requests)
-            data = ws.receive(timeout=0)
-            if data:
-                try:
-                    msg = json.loads(data)
-                    if msg.get('type') == 'request_frame':
-                        latest = frame_cache.get_latest()
-                        if latest:
-                            ws.send(json.dumps({
-                                'type': 'frame',
-                                'timestamp': latest['timestamp'],
-                                'width': latest['width'],
-                                'height': latest['height'],
-                                'format': 'jpeg',
-                                'data': base64.b64encode(latest['data']).decode('utf-8')
-                            }))
-                except (json.JSONDecodeError, TypeError):
-                    pass
-
-    except Exception as e:
-        print(f"Client {client_id} error: {e}")
-    finally:
-        with clients_lock:
-            websocket_clients.discard(ws)
-            client_count = len(websocket_clients)
-        print(f"Client {client_id} disconnected. Total clients: {client_count}")
-
-@app.route('/stats')
-def get_stats():
-    """Get memory and performance statistics"""
-    stats = frame_cache.get_stats()
-    with clients_lock:
-        stats['websocket_clients'] = len(websocket_clients)
-    return jsonify(stats)
-
-# Alternative SSE endpoint for browsers that have WebSocket issues
-@app.route('/stream-sse')
-def stream_sse():
-    """Server-Sent Events endpoint as fallback"""
-    def generate():
-        last_timestamp = 0
-        while True:
+      # Check for client messages (like frame requests)
+      data = ws.receive(timeout=0)
+      if data:
+        try:
+          msg = json.loads(data)
+          if msg.get('type') == 'request_frame':
             latest = frame_cache.get_latest()
-            if latest and latest['timestamp'] > last_timestamp:
-                last_timestamp = latest['timestamp']
-                data = {
+            if latest:
+              ws.send(
+                json.dumps(
+                  {
                     'type': 'frame',
                     'timestamp': latest['timestamp'],
                     'width': latest['width'],
                     'height': latest['height'],
-                    'data': base64.b64encode(latest['data']).decode('utf-8')
-                }
-                yield f"data: {json.dumps(data)}\n\n"
-            else:
-                # Send heartbeat
-                yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
-            time.sleep(0.1)
+                    'format': 'jpeg',
+                    'data': base64.b64encode(latest['data']).decode('utf-8'),
+                  }
+                )
+              )
+        except (json.JSONDecodeError, TypeError):
+          pass
 
-    return Response(generate(), mimetype="text/event-stream")
+  except Exception as e:
+    print(f"Client {client_id} error: {e}")
+  finally:
+    with clients_lock:
+      websocket_clients.discard(ws)
+      client_count = len(websocket_clients)
+    print(f"Client {client_id} disconnected. Total clients: {client_count}")
+
+
+@app.route('/stats')
+def get_stats():
+  """Get memory and performance statistics"""
+  stats = frame_cache.get_stats()
+  with clients_lock:
+    stats['websocket_clients'] = len(websocket_clients)
+  return jsonify(stats)
+
+
+# Alternative SSE endpoint for browsers that have WebSocket issues
+@app.route('/stream-sse')
+def stream_sse():
+  """Server-Sent Events endpoint as fallback"""
+
+  def generate():
+    last_timestamp = 0
+    while True:
+      latest = frame_cache.get_latest()
+      if latest and latest['timestamp'] > last_timestamp:
+        last_timestamp = latest['timestamp']
+        data = {
+          'type': 'frame',
+          'timestamp': latest['timestamp'],
+          'width': latest['width'],
+          'height': latest['height'],
+          'data': base64.b64encode(latest['data']).decode('utf-8'),
+        }
+        yield f"data: {json.dumps(data)}\n\n"
+      else:
+        # Send heartbeat
+        yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+      time.sleep(0.1)
+
+  return Response(generate(), mimetype="text/event-stream")
+
 
 def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
-    """Wait for network connection"""
-    print("Waiting for network connection...")
-    for _ in range(timeout // delay):
-        try:
-            result = subprocess.run(["ip", "route", "show", "dev", interface],
-                                  stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-            if result.stdout.strip():
-                print("Network is up.")
-                return True
-        except Exception:
-            pass
-        time.sleep(delay)
-    print("Network not detected, continuing anyway...")
-    return False
+  """Wait for network connection"""
+  print("Waiting for network connection...")
+  for _ in range(timeout // delay):
+    try:
+      result = subprocess.run(["ip", "route", "show", "dev", interface], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+      if result.stdout.strip():
+        print("Network is up.")
+        return True
+    except Exception:
+      pass
+    time.sleep(delay)
+  print("Network not detected, continuing anyway...")
+  return False
+
 
 if __name__ == '__main__':
-    wait_for_wifi()
+  wait_for_wifi()
 
-    print("="*60)
-    print("🚀 OpenPilot UI Real-Time Streaming Server")
-    print("="*60)
-    print("✅ Zero disk storage - Memory only")
-    print("✅ WebSocket real-time streaming")
-    print("✅ Automatic frame broadcasting")
-    print("="*60)
+  print("=" * 60)
+  print("🚀 OpenPilot UI Real-Time Streaming Server")
+  print("=" * 60)
+  print("✅ Zero disk storage - Memory only")
+  print("✅ WebSocket real-time streaming")
+  print("✅ Automatic frame broadcasting")
+  print("=" * 60)
 
-    # Start shared memory monitoring
-    shm_reader.start_monitoring()
+  # Start shared memory monitoring
+  shm_reader.start_monitoring()
 
-    # Run Flask with WebSocket support
-    try:
-        app.run(host='0.0.0.0', port=8081, debug=False)
-    finally:
-        shm_reader.close()
+  # Run Flask with WebSocket support
+  try:
+    app.run(host='0.0.0.0', port=8081, debug=False)
+  finally:
+    shm_reader.close()
