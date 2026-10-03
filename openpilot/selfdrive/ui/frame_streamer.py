@@ -47,7 +47,7 @@ class FrameStreamer:
         self._init_shm()
 
     def _init_shm(self):
-        # Match the C++ behaviour: unlink any stale segment, then (re)create.
+        # Match the C++ behavior: unlink any stale segment, then (re)create.
         try:
             stale = shm.SharedMemory(name=SHM_NAME)
             stale.close()
@@ -60,7 +60,9 @@ class FrameStreamer:
         try:
             self.shm = shm.SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
             # Zero the header so a reader never sees a stale ready flag.
-            self.shm.buf[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
+            buf = self.shm.buf
+            assert buf is not None
+            buf[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
             print(f"FrameStreamer: shared memory ready ({SHM_SIZE} bytes)")
         except Exception as e:
             print(f"FrameStreamer: failed to init shared memory: {e}")
@@ -72,7 +74,8 @@ class FrameStreamer:
         Must be called from the render thread while a frame is on screen
         (i.e. before end_drawing swaps the buffers).
         """
-        if self.shm is None:
+        shm_buf = self.shm.buf if self.shm is not None else None
+        if shm_buf is None:
             return
 
         now_mono = time.monotonic()
@@ -108,7 +111,7 @@ class FrameStreamer:
 
             # Write payload first, then the header with ready=1 last, so the
             # reader never sees ready=1 pointing at stale/partial data.
-            self.shm.buf[METADATA_SIZE:METADATA_SIZE + len(jpeg)] = jpeg
+            shm_buf[METADATA_SIZE:METADATA_SIZE + len(jpeg)] = jpeg
             header = struct.pack(
                 HEADER_FMT,
                 int(time.clock_gettime(time.CLOCK_REALTIME) * 1000),  # epoch timestamp (ms)
@@ -118,7 +121,7 @@ class FrameStreamer:
                 FORMAT_JPEG,
                 1,                # ready
             )
-            self.shm.buf[0:METADATA_SIZE] = header
+            shm_buf[0:METADATA_SIZE] = header
         except Exception as e:
             print(f"FrameStreamer error: {e}")
         finally:

@@ -22,7 +22,7 @@ Integration (edit ``selfdrive/ui/ui.py``):
 
 ``RemoteUI()`` must be created *after* the window/GL context exists (i.e. after
 ``gui_app.init_window(...)``), mirroring the old code's 1s delay that waited for
-the window to initialise. ``stream_frame()`` must run while the frame is still
+the window to initialize. ``stream_frame()`` must run while the frame is still
 on screen (before raylib swaps buffers), so call it near the end of the loop
 body, before ``gui_app.render()`` advances.
 """

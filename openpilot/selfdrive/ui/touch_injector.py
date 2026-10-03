@@ -1,7 +1,7 @@
 """Touch/mouse injector for the raylib/pyray openpilot UI.
 
 Python port of the old Qt ``touch_injector.cc``. The Qt version received JSON
-input events on a Unix socket and synthesised ``QMouseEvent``/``QWheelEvent``
+input events on a Unix socket and synthesized ``QMouseEvent``/``QWheelEvent``
 objects. raylib has no event queue to post into: input is *polled* every frame
 (``is_mouse_button_pressed`` etc.). So instead we monkeypatch pyray's input
 functions to report remote state, falling back to the real functions when no
