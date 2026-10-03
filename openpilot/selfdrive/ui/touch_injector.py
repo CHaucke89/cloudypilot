@@ -7,7 +7,7 @@ objects. raylib has no event queue to post into: input is *polled* every frame
 functions to report remote state, falling back to the real functions when no
 remote client is active.
 
-Wire protocol matches ``stream_server.py`` exactly: a JSON object per
+Wire protocol matches ``openpilot/cloudypilot/system/remote_ui/stream_server.py`` exactly: a JSON object per
 connection over a ``SOCK_STREAM`` Unix socket at ``/tmp/ui_touch_socket``, e.g.
 ``{"type": "click", "x": 100, "y": 200}``.
 """

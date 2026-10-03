@@ -3,7 +3,7 @@
 Python port of the old Qt ``frame_streamer.cc``. Instead of ``QPixmap::grab()``
 on a QWidget, this captures the current raylib framebuffer with
 ``load_image_from_screen()`` and writes a JPEG-compressed frame plus metadata
-into POSIX shared memory. ``stream_server.py`` reads that shared memory and
+into POSIX shared memory. ``openpilot/cloudypilot/system/remote_ui/stream_server.py`` reads that shared memory and
 broadcasts frames to browsers over WebSocket.
 
 Usage (inside the UI's raylib render loop, between begin/end drawing):
@@ -23,7 +23,7 @@ from multiprocessing import shared_memory as shm
 from PIL import Image
 import pyray as pr
 
-# Must match stream_server.py and the legacy C++ SharedFrame struct.
+# Must match openpilot/cloudypilot/system/remote_ui/stream_server.py and the legacy C++ SharedFrame struct.
 SHM_NAME = "openpilot_ui_frames"  # created at /dev/shm/openpilot_ui_frames
 FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes (max 1080p RGBA)
 METADATA_SIZE = 31                 # packed header, see HEADER_FMT below

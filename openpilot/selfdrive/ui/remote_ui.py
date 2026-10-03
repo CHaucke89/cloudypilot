@@ -49,7 +49,7 @@ class RemoteUI:
 
 if __name__ == "__main__":
     # Standalone smoke test: open a window, draw a moving box, stream it, and
-    # report remote clicks. Run stream_server.py separately and open the page.
+    # report remote clicks. Run openpilot/cloudypilot/system/remote_ui/stream_server.py separately and open the page.
     import pyray as pr
 
     injector = TouchInjector()
