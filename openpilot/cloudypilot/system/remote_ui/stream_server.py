@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-OpenPilot UI Streaming Server - Fixed Real-Time Version
-Real-time WebSocket streaming with proper frame broadcasting
+OpenPilot UI Streaming Server - Real-time WebSocket streaming
 """
 
 import os

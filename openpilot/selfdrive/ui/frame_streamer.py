@@ -1,20 +1,3 @@
-"""Frame streamer for the raylib/pyray openpilot UI.
-
-Python port of the old Qt ``frame_streamer.cc``. Instead of ``QPixmap::grab()``
-on a QWidget, this captures the current raylib framebuffer with
-``load_image_from_screen()`` and writes a JPEG-compressed frame plus metadata
-into POSIX shared memory. ``openpilot/cloudypilot/system/remote_ui/stream_server.py`` reads that shared memory and
-broadcasts frames to browsers over WebSocket.
-
-Usage (inside the UI's raylib render loop, between begin/end drawing):
-
-    streamer = FrameStreamer()
-    for _ in gui_app.render():
-        ...draw the frame...
-        streamer.stream_frame()   # reads the framebuffer just drawn
-    streamer.close()
-"""
-
 import io
 import struct
 import time

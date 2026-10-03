@@ -1,16 +1,16 @@
-# Cloudypilot
+# cloudypilot
 
-Cloudypilot is a personal fork of [sunnypilot](https://github.com/sunnypilot/sunnypilot), itself a fork of [openpilot](https://github.com/commaai/openpilot). It is developed primarily for a 2026 Kia EV6 and is shared publicly as a free and open-source project.
+cloudypilot is a personal fork of [sunnypilot](https://github.com/sunnypilot/sunnypilot), itself a fork of [openpilot](https://github.com/commaai/openpilot). It is developed primarily for a 2026 Kia EV6 and is shared publicly as a free and open-source project.
 
-> **This is a potentially unsafe fork.** Cloudypilot is not affiliated with, endorsed by, or supported by sunnypilot, comma.ai, or the openpilot developers.
+> **This is a potentially unsafe fork.** cloudypilot is not affiliated with, endorsed by, or supported by sunnypilot, comma.ai, or the openpilot developers.
 
 ## Safety first
 
-Cloudypilot includes changes to safety-critical code, including steering-angle limits. These changes may be considered unsafe by comma.ai and could result in a device ban. Driver-monitoring and longitudinal-engagement safety code have not been intentionally weakened or removed.
+cloudypilot includes changes to safety-critical code, including steering-angle limits. These changes may be considered unsafe by comma.ai and could result in a device ban. Driver-monitoring and longitudinal-engagement safety code have not been intentionally weakened or removed.
 
-This software operates a motor vehicle. Use it only if you understand the risks, follow all local laws, and can maintain constant attention and control. **Install and use Cloudypilot entirely at your own risk.** It is alpha-quality research software, not a product, and comes with no warranty.
+This software operates a motor vehicle. Use it only if you understand the risks, follow all local laws, and can maintain constant attention and control. **Install and use cloudypilot entirely at your own risk.** It is alpha-quality research software, not a product, and comes with no warranty.
 
-If comma Connect is important to you, consider these risks carefully before installing. Cloudypilot also includes an option to use the stable.konik.ai API instead of connect.comma.ai.
+If comma Connect is important to you, consider these risks carefully before installing. cloudypilot also includes an option to use the stable.konik.ai API instead of connect.comma.ai.
 
 ## Features and changes
 
@@ -28,36 +28,21 @@ If comma Connect is important to you, consider these risks carefully before inst
 - Add a **Soft Reboot** button to the Device panel and support `sudo systemctl restart comma` without triggering the hardware-reset prompt. Standard hardware reboot behavior is preserved.
 - Reset configurable options to their defaults by tapping the current value.
 - Show the active model, current branch, and Always Offroad Mode controls on the home screen.
+- Stream the live on-device UI to a web browser with the built-in Remote UI server.
 - Include additional user-interface changes.
 
-# Remote UI Stream
+## Remote UI Stream
 
-Cloudypilot incorporates the [raylib implementation of the openpilot remote UI streamer](https://github.com/CHaucke89/op-remote-ui). The server is part of this repo and launches from:
+cloudypilot incorporates the [raylib implementation of the openpilot remote UI streamer](https://github.com/CHaucke89/op-remote-ui). The server is controlled by the `Remote UI` toggle in Developer settings
+and runs alongside the other openpilot/sunnypilot/cloudypilot processes. Verify it's running by connecting to the device through SSH and attaching to the comma tmux session with `tmux a`.
 
-- `openpilot/cloudypilot/system/remote_ui/stream_server.py`
-
-When launching with `launch_openpilot.sh`, the stream server starts automatically by default and serves on port `8081`.
-
-- Browser URL: `http://<device-ip>:8081`
-- Log file: `/tmp/cloudypilot_stream_server.log`
-
-To disable this feature for a run:
-
-```bash
-CP_REMOTE_UI_STREAM=0 ./launch_openpilot.sh
-```
-
-If you want to run the server manually:
-
-```bash
-python3 openpilot/cloudypilot/system/remote_ui/stream_server.py
-```
+Make sure you're connected to the same Wifi network as the device and head to `http://<device-ip>:8081` in your browser to view and interact with the comma device remotely. The log file is located at `/tmp/cloudypilot_stream_server.log`.
 
 ## Branch guidance
 
-Do **not** install the `ch-dev` branch; it is locked to a specific device. Any branch may be broken at any time. This project is primarily maintained for personal use, but is public so others can inspect and improve it.
+Do **not** install the `ch-dev` branch; it is locked to a specific device. Any branch may be broken at any time. This project is primarily maintained for personal use, but feel free to use anything you find here however you see fit!
 
-If you find a feature that would be useful upstream in sunnypilot, please open an issue or get in touch. Where feasible, changes may be proposed upstream.
+If you find a feature that would be useful upstream in sunnypilot, open an issue or reach out! A pull request can be made, if feasible.
 
 ## Related documentation
 
@@ -68,7 +53,7 @@ If you find a feature that would be useful upstream in sunnypilot, please open a
 
 ## Licensing and attribution
 
-Cloudypilot contains original work and substantial portions derived from sunnypilot and openpilot. Credit for the vast majority of the codebase belongs to their respective developers.
+cloudypilot contains original work and substantial portions derived from sunnypilot and openpilot. Credit for the vast majority of the codebase belongs to their respective developers.
 
 > This project uses software from Haibin Wen and SUNNYPILOT LLC and is licensed under a custom license requiring permission for use.
 >
