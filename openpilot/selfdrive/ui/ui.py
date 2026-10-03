@@ -10,10 +10,13 @@ from openpilot.selfdrive.ui.layouts.main import MainLayout
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 from openpilot.selfdrive.ui.ui_state import ui_state
 
+from openpilot.selfdrive.ui.remote_ui import RemoteUI
+
 BIG_UI = gui_app.big_ui()
 
 
 def main():
+  remote = RemoteUI()
   cores = {5, }
   # above plannerd and radard
   config_realtime_process(0, Priority.CTRL_HIGH)
@@ -42,7 +45,9 @@ def main():
       msg.uiDebug.cpuTimeMillis = (cpu_time + extra_cpu) * 1000
       msg.uiDebug.frameTimeMillis = frame_time * 1000
       pm.send('uiDebug', msg)
+      remote.stream_frame()
 
+  remote.close()
 
 if __name__ == "__main__":
   main()
