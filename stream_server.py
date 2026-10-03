@@ -536,13 +536,74 @@ HTML_PAGE = """
       setTimeout(() => container.removeChild(indicator), 500);
     }
 
+    let mouseDown = false;
+    let dragActive = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    const dragThreshold = 8;
+
     // Mouse events
+    canvas.addEventListener('mousedown', (e) => {
+      const coords = getDeviceCoordinates(e.clientX, e.clientY);
+      mouseDown = true;
+      dragActive = false;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      sendInput({ type: 'mousedown', x: coords.x, y: coords.y });
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!mouseDown) {
+        return;
+      }
+
+      const moved = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
+      if (moved >= dragThreshold) {
+        dragActive = true;
+      }
+
+      const coords = getDeviceCoordinates(e.clientX, e.clientY);
+      sendInput({ type: dragActive ? 'drag' : 'mousemove', x: coords.x, y: coords.y });
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (!mouseDown) {
+        return;
+      }
+
+      const coords = getDeviceCoordinates(e.clientX, e.clientY);
+      sendInput({ type: dragActive ? 'dragend' : 'mouseup', x: coords.x, y: coords.y });
+      mouseDown = false;
+      dragActive = false;
+    });
+
+    canvas.addEventListener('mouseleave', (e) => {
+      if (!mouseDown) {
+        return;
+      }
+
+      const coords = getDeviceCoordinates(e.clientX, e.clientY);
+      sendInput({ type: dragActive ? 'dragend' : 'mouseup', x: coords.x, y: coords.y });
+      mouseDown = false;
+      dragActive = false;
+    });
+
     canvas.addEventListener('click', (e) => {
+      if (dragActive) {
+        dragActive = false;
+        return;
+      }
       const coords = getDeviceCoordinates(e.clientX, e.clientY);
       showTouchIndicator(e.clientX - canvas.getBoundingClientRect().left,
                         e.clientY - canvas.getBoundingClientRect().top);
       sendInput({ type: 'click', x: coords.x, y: coords.y });
     });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const coords = getDeviceCoordinates(e.clientX, e.clientY);
+      sendInput({ type: 'scroll', x: coords.x, y: coords.y, deltaY: e.deltaY });
+    }, { passive: false });
 
     // Touch events
     canvas.addEventListener('touchstart', (e) => {
@@ -552,7 +613,38 @@ HTML_PAGE = """
         const coords = getDeviceCoordinates(touch.clientX, touch.clientY);
         sendInput({ type: 'touchstart', x: coords.x, y: coords.y });
       }
-    });
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const coords = getDeviceCoordinates(touch.clientX, touch.clientY);
+        sendInput({ type: 'touchmove', x: coords.x, y: coords.y });
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      if (touch) {
+        const coords = getDeviceCoordinates(touch.clientX, touch.clientY);
+        sendInput({ type: 'touchend', x: coords.x, y: coords.y });
+      } else {
+        sendInput({ type: 'touchend' });
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      if (touch) {
+        const coords = getDeviceCoordinates(touch.clientX, touch.clientY);
+        sendInput({ type: 'touchend', x: coords.x, y: coords.y });
+      } else {
+        sendInput({ type: 'touchend' });
+      }
+    }, { passive: false });
 
     // Start WebSocket connection
     connectWebSocket();
