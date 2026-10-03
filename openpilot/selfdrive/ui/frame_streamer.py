@@ -15,7 +15,6 @@ Usage (inside the UI's raylib render loop, between begin/end drawing):
     streamer.close()
 """
 
-import ctypes
 import io
 import struct
 import time
@@ -55,7 +54,7 @@ class FrameStreamer:
             stale.unlink()
         except FileNotFoundError:
             pass
-        except Exception as e:  # noqa: BLE001 - best effort cleanup
+        except Exception as e:
             print(f"FrameStreamer: could not clear stale shm: {e}")
 
         try:
@@ -63,7 +62,7 @@ class FrameStreamer:
             # Zero the header so a reader never sees a stale ready flag.
             self.shm.buf[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
             print(f"FrameStreamer: shared memory ready ({SHM_SIZE} bytes)")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"FrameStreamer: failed to init shared memory: {e}")
             self.shm = None
 
@@ -76,26 +75,27 @@ class FrameStreamer:
         if self.shm is None:
             return
 
-        now = time.time()
-        if (now - self.last_capture_time) < self.frame_interval:
+        now_mono = time.monotonic()
+        if (now_mono - self.last_capture_time) < self.frame_interval:
             return
-        self.last_capture_time = now
+        self.last_capture_time = now_mono
 
         rl_image = pr.load_image_from_screen()
         try:
             width = rl_image.width
             height = rl_image.height
-            # rl_image.data is a cffi pointer; int() yields its raw address.
-            addr = int(rl_image.data)
-            if not width or not height or addr == 0:
+            if not width or not height:
                 return
 
-            # Wrap the raw RGBA framebuffer without copying.
             data_size = width * height * 4
-            buf = (ctypes.c_ubyte * data_size).from_address(addr)
+            if data_size <= 0:
+                return
+
+            # Read raw RGBA bytes from pyray's cffi pointer safely.
+            rgba = bytes(pr.ffi.buffer(rl_image.data, data_size))
 
             # load_image_from_screen already returns top-to-bottom orientation.
-            pil_img = Image.frombuffer("RGBA", (width, height), buf, "raw", "RGBA", 0, 1)
+            pil_img = Image.frombuffer("RGBA", (width, height), rgba, "raw", "RGBA", 0, 1)
             pil_img = pil_img.convert("RGB")  # JPEG has no alpha channel
 
             with io.BytesIO() as out:
@@ -111,7 +111,7 @@ class FrameStreamer:
             self.shm.buf[METADATA_SIZE:METADATA_SIZE + len(jpeg)] = jpeg
             header = struct.pack(
                 HEADER_FMT,
-                int(now * 1000),  # timestamp (ms)
+                int(time.clock_gettime(time.CLOCK_REALTIME) * 1000),  # epoch timestamp (ms)
                 width,
                 height,
                 len(jpeg),
@@ -119,7 +119,7 @@ class FrameStreamer:
                 1,                # ready
             )
             self.shm.buf[0:METADATA_SIZE] = header
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"FrameStreamer error: {e}")
         finally:
             # Free the raylib image memory to avoid leaking a frame per tick.
@@ -130,6 +130,6 @@ class FrameStreamer:
             try:
                 self.shm.close()
                 self.shm.unlink()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
             self.shm = None
