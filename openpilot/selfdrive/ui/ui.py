@@ -33,6 +33,7 @@ def main():
     for should_render, frame_time, cpu_time in gui_app.render():
       extra_start = time.monotonic()
       ui_state.update()
+      gui_app.set_should_render(True)
 
       if should_render:
         # reaffine after power save offlines our core
