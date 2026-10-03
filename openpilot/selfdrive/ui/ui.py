@@ -16,13 +16,14 @@ BIG_UI = gui_app.big_ui()
 
 
 def main():
-  remote = RemoteUI()
+
   cores = {5, }
   # above plannerd and radard
   config_realtime_process(0, Priority.CTRL_HIGH)
 
   gui_app.init_window("UI")
-  remote.stream_frame()
+  remote = RemoteUI()
+
   if BIG_UI:
     MainLayout()
   else:
@@ -40,15 +41,17 @@ def main():
           set_core_affinity(list(cores))
         except OSError:
           pass
-
+      try:
+        remote.stream_frame()
+      except Exception:
+        pass
+      finally:
+        remote.close()
       extra_cpu = time.monotonic() - extra_start
       msg = messaging.new_message('uiDebug')
       msg.uiDebug.cpuTimeMillis = (cpu_time + extra_cpu) * 1000
       msg.uiDebug.frameTimeMillis = frame_time * 1000
       pm.send('uiDebug', msg)
-
-
-  remote.close()
 
 if __name__ == "__main__":
   main()
