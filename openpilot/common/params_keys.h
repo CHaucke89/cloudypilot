@@ -305,6 +305,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"CustomShutdownVoltage", {PERSISTENT, FLOAT, "11.8"}},
     {"CustomSR", {PERSISTENT, FLOAT, "16.0"}},
     {"DoSoftReboot", {CLEAR_ON_MANAGER_START, BOOL}},
+    {"EnableRemoteUI", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"KonikApi", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"KonikDongleId", {PERSISTENT, STRING}},
     {"PermaLatch", {PERSISTENT, BOOL}},
