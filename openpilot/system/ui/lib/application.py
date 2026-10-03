@@ -686,10 +686,9 @@ class GuiApplication(GuiApplicationExtSP, GuiApplicationExtCP):
         if self._grid_size > 0:
           self._draw_grid()
 
-        rl.end_drawing()
-
-        # Yield has to happen after end_drawing() or the remote UI will send partially rendered frames
         yield True, frame_time, cpu_time
+
+        rl.end_drawing()
 
         if RECORD:
           image = rl.load_image_from_texture(self._render_texture.texture)
