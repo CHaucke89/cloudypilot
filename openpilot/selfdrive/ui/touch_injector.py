@@ -49,6 +49,7 @@ class TouchInjector:
         self._wheel = 0.0                # pending scroll delta
 
         # Keep references to the genuine pyray functions for local fallback.
+        self._orig_get_touch_position = pr.get_touch_position
         self._orig_get_mouse_position = pr.get_mouse_position
         self._orig_is_mouse_button_down = pr.is_mouse_button_down
         self._orig_is_mouse_button_pressed = pr.is_mouse_button_pressed
@@ -162,6 +163,16 @@ class TouchInjector:
 
     # --- pyray hooks -------------------------------------------------------
 
+    def _hook_get_touch_position(self, slot):
+        now = time.time()
+        with self._lock:
+            if self._remote_active(now):
+                if slot == MOUSE_BUTTON_LEFT:
+                    return pr.Vector2(float(self._x), float(self._y))
+                # No synthetic second touch point for remote input.
+                return pr.Vector2(-1.0, -1.0)
+        return self._orig_get_touch_position(slot)
+
     def _hook_get_mouse_position(self):
         now = time.time()
         with self._lock:
@@ -212,6 +223,7 @@ class TouchInjector:
 
     def _apply_hooks(self):
         print("TouchInjector: hooking pyray input functions")
+        pr.get_touch_position = self._hook_get_touch_position
         pr.get_mouse_position = self._hook_get_mouse_position
         pr.is_mouse_button_down = self._hook_is_mouse_button_down
         pr.is_mouse_button_pressed = self._hook_is_mouse_button_pressed
