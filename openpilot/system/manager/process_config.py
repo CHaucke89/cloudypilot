@@ -71,6 +71,9 @@ def livestream(started: bool, params: Params, CP: car.CarParams) -> bool:
 def use_copyparty(started, params, CP: car.CarParams) -> bool:
   return bool(params.get_bool("EnableCopyparty"))
 
+def use_remote_ui_stream_server(started, params, CP: car.CarParams) -> bool:
+  return bool(params.get_bool("EnableRemoteUI"))
+
 def sunnylink_ready_shim(started, params, CP: car.CarParams) -> bool:
   """Shim for sunnylink_ready to match the process manager signature."""
   return sunnylink_ready(params)
@@ -157,6 +160,7 @@ procs = [
   # debug procs
   NativeProcess("bridge", "openpilot/cereal/messaging", ["./bridge"], notcar),
   PythonProcess("webrtcd", "openpilot.system.webrtc.webrtcd", or_(livestream, notcar)),
+  PythonProcess("remote_ui_stream_server", "openpilot.cloudypilot.system.remote_ui.stream_server", use_remote_ui_stream_server),
   PythonProcess("joystick", "openpilot.tools.joystick.joystick_control", and_(joystick, iscar)),
 
   # sunnylink <3
