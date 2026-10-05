@@ -300,6 +300,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
 
     // cloudypilot params
     {"AlwaysOffDM", {PERSISTENT, BOOL}},
+    {"AlwaysOnBsm", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"AuthorizedHash", {PERSISTENT, STRING}},
     {"CommaDongleId", {PERSISTENT, STRING}},
     {"CustomShutdownVoltage", {PERSISTENT, FLOAT, "11.8"}},
