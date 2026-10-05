@@ -1,6 +1,6 @@
 
 from openpilot.selfdrive.ui.cloudypilot.layouts.settings.steering_sub_layouts.lane_change_settings import LaneChangeSettingsLayoutCP
-from openpilot.selfdrive.ui.cloudypilot.ui_state import ui_state
+from openpilot.selfdrive.ui.sunnypilot.ui_state import ui_state
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.steering import PanelType, SteeringLayout
 from openpilot.system.ui.cloudypilot.widgets.list_view import LineSeparatorCP, option_item_cp
 from openpilot.system.ui.lib.multilang import tr
