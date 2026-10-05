@@ -120,6 +120,7 @@ class SelfdriveD:
     self.is_metric = self.params.get_bool("IsMetric")
     self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
     self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
+    self.always_on_bsm = self.params.get_bool("AlwaysOnBsm")
 
     car_recognized = self.CP.brand != 'mock'
 
@@ -352,7 +353,14 @@ class SelfdriveD:
     # ******************************************************************************************
 
     # Handle lane change
-    if self.sm['modelV2'].meta.laneChangeState == LaneChangeState.preLaneChange:
+    controlstate = self.sm['controlsState']
+    lateral_state = getattr(controlstate.lateralControlState, controlstate.lateralControlState.which())
+    show_bsm_alert = (CS.leftBlindspot and CS.leftBlinker) or (CS.rightBlindspot and CS.rightBlinker)
+
+    # Always-on BSM warning path: show blindspot alert even when lateral is inactive.
+    if self.always_on_bsm and not lateral_state.active and show_bsm_alert:
+      self.events.add(EventName.laneChangeBlocked)
+    elif self.sm['modelV2'].meta.laneChangeState == LaneChangeState.preLaneChange:
       direction = self.sm['modelV2'].meta.laneChangeDirection
       mdv2sp = self.sm['modelDataV2SP']
 
@@ -681,6 +689,7 @@ class SelfdriveD:
       self.is_metric = self.params.get_bool("IsMetric")
       self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
       self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
+      self.always_on_bsm = self.params.get_bool("AlwaysOnBsm")
       self.personality = self.params.get("LongitudinalPersonality", return_default=True)
 
       self.mads.read_params()

@@ -2,6 +2,8 @@
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.steering import SteeringLayout
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.steering import PanelType
+from openpilot.selfdrive.ui.cloudypilot.layouts.settings.steering_sub_layouts.lane_change_settings import LaneChangeSettingsLayoutCP
 from openpilot.system.ui.cloudypilot.widgets.list_view import LineSeparatorCP
 from openpilot.system.ui.cloudypilot.widgets.list_view import option_item_cp
 
@@ -10,6 +12,7 @@ from openpilot.system.ui.cloudypilot.widgets.list_view import option_item_cp
 class SteeringLayoutCP(SteeringLayout):
   def __init__(self):
     super().__init__()
+    self._lane_change_settings_layout = LaneChangeSettingsLayoutCP(lambda: self._set_current_panel(PanelType.STEERING))
 
   def _initialize_items(self):
     items = super()._initialize_items()
