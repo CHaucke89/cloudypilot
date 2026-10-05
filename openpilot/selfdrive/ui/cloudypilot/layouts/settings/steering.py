@@ -29,9 +29,15 @@ class SteeringLayoutCP(SteeringLayout):
       value_change_step=5,
       use_float_scaling=True,
       description=lambda: tr("Current learned steer ratio: ") + (
-                          f"{ui_state.CP.steerRatio:.2f}" if ui_state.CP is not None else tr("unknown")
+        f"{ui_state.sm['vehicleParameters'].steerRatio:.2f}"
+        if ui_state.sm.valid["vehicleParameters"]
+        else (
+          f"{ui_state.CP.steerRatio:.2f}"
+          if ui_state.CP is not None
+          else tr("unknown")
+        )
       ),
-      label_callback=lambda sr: f'{sr / 100.0:.2f}',
+      label_callback=lambda sr: f"{sr / 100.0:.2f}",
       reset_enabled=True,
     )
 
