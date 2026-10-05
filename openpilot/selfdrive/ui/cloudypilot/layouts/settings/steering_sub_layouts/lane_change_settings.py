@@ -1,6 +1,6 @@
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.steering_sub_layouts.lane_change_settings import LaneChangeSettingsLayout
 from openpilot.system.ui.lib.multilang import tr
-from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp
+from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp, LineSeparatorSP
 
 
 class LaneChangeSettingsLayoutCP(LaneChangeSettingsLayout):
@@ -17,5 +17,5 @@ class LaneChangeSettingsLayoutCP(LaneChangeSettingsLayout):
                               even if lateral control is inactive."),
     )
 
-    items.insert(items.index(self._bsm_delay) + 1, self._always_on_bsm)
+    items.insert(items.index(self._bsm_delay) + 1, [LineSeparatorSP(40), self._always_on_bsm])
     return items
