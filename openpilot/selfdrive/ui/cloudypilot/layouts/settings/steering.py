@@ -1,12 +1,10 @@
 
+from openpilot.selfdrive.ui.cloudypilot.layouts.settings.steering_sub_layouts.lane_change_settings import LaneChangeSettingsLayoutCP
+from openpilot.selfdrive.ui.cloudypilot.ui_state import ui_state
+from openpilot.selfdrive.ui.sunnypilot.layouts.settings.steering import PanelType, SteeringLayout
+from openpilot.system.ui.cloudypilot.widgets.list_view import LineSeparatorCP, option_item_cp
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp
-from openpilot.selfdrive.ui.sunnypilot.layouts.settings.steering import SteeringLayout
-from openpilot.selfdrive.ui.sunnypilot.layouts.settings.steering import PanelType
-from openpilot.selfdrive.ui.cloudypilot.layouts.settings.steering_sub_layouts.lane_change_settings import LaneChangeSettingsLayoutCP
-from openpilot.system.ui.cloudypilot.widgets.list_view import LineSeparatorCP
-from openpilot.system.ui.cloudypilot.widgets.list_view import option_item_cp
-
 
 
 class SteeringLayoutCP(SteeringLayout):
@@ -30,7 +28,9 @@ class SteeringLayoutCP(SteeringLayout):
       max_value=2000,
       value_change_step=5,
       use_float_scaling=True,
-      description=lambda: tr("Set a custom steer ratio value."),
+      description=lambda: tr("Current learned steer ratio for this vehicle: ") + (
+                          f"{ui_state.CP.steerRatio:.2f}" if ui_state.CP is not None else tr("unknown")
+      ),
       label_callback=lambda sr: f'{sr / 100.0:.2f}',
       reset_enabled=True,
     )
