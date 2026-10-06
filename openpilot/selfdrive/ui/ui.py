@@ -43,7 +43,8 @@ def main():
           except OSError:
             pass
 
-        remote.stream_frame()
+        if ui_state.remote_ui:
+          remote.stream_frame()
 
         extra_cpu = time.monotonic() - extra_start
         msg = messaging.new_message('uiDebug')
