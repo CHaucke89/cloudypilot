@@ -8,7 +8,7 @@ this module exposes a single object you splice into that existing loop.
 
 Integration (edit ``selfdrive/ui/ui.py``):
 
-    from openpilot.selfdrive.ui.remote_ui import RemoteUI   # adjust import path
+    from openpilot.cloudypilot.selfdrive.ui.remote_ui import RemoteUI
 
     def main():
         gui_app.init_window("UI")
@@ -27,8 +27,8 @@ on screen (before raylib swaps buffers), so call it near the end of the loop
 body, before ``gui_app.render()`` advances.
 """
 
-from openpilot.selfdrive.ui.frame_streamer import FrameStreamer
-from openpilot.selfdrive.ui.touch_injector import TouchInjector
+from openpilot.cloudypilot.selfdrive.ui.frame_streamer import FrameStreamer
+from openpilot.cloudypilot.selfdrive.ui.touch_injector import TouchInjector
 
 
 class RemoteUI:
