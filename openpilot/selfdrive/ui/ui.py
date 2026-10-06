@@ -43,7 +43,7 @@ def main():
           except OSError:
             pass
 
-        if ui_state.remote_ui:
+        if ui_state.remote_ui and ui_state.remote_ui_client_connected:
           remote.stream_frame()
 
         extra_cpu = time.monotonic() - extra_start
