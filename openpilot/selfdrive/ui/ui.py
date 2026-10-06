@@ -9,8 +9,7 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.selfdrive.ui.layouts.main import MainLayout
 from openpilot.selfdrive.ui.mici.layouts.main import MiciMainLayout
 from openpilot.selfdrive.ui.ui_state import ui_state
-
-from openpilot.selfdrive.ui.remote_ui import RemoteUI
+from openpilot.cloudypilot.selfdrive.ui.remote_ui import RemoteUI
 
 BIG_UI = gui_app.big_ui()
 
