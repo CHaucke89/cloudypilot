@@ -3,8 +3,10 @@ class UIStateCP:
     self.torque_bar_fade: bool = False
     self.use_feet: bool = False
     self.remote_ui: bool = False
+    self.remote_ui_client_connected: bool = False
 
   def update_params(self) -> None:
     self.torque_bar_fade = self.params.get_bool("TorqueBarFade")
     self.use_feet = self.params.get_bool("UseFeetGPS")
     self.remote_ui = self.params.get_bool("EnableRemoteUI")
+    self.remote_ui_client_connected = self.params.get_bool("RemoteUIClientConnected")
