@@ -18,6 +18,7 @@ from collections import deque
 
 from flask import Flask, render_template_string, request, jsonify, Response
 from flask_sock import Sock
+from openpilot.common.params import Params
 
 app = Flask(__name__)
 sock = Sock(app)
@@ -34,6 +35,7 @@ SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE  # Total size
 frame_queue = queue.Queue(maxsize=10)
 websocket_clients = set()
 clients_lock = threading.Lock()
+params = Params()
 
 
 # Frame cache for efficient streaming
@@ -677,6 +679,9 @@ def stream(ws):
     websocket_clients.add(ws)
     client_count = len(websocket_clients)
 
+  if client_count == 1:
+    params.put_bool("RemoteUIClientConnected", True)
+
   print(f"Total clients: {client_count}")
 
   try:
@@ -745,6 +750,8 @@ def stream(ws):
     with clients_lock:
       websocket_clients.discard(ws)
       client_count = len(websocket_clients)
+    if client_count == 0:
+      params.put_bool("RemoteUIClientConnected", False)
     print(f"Client {client_id} disconnected. Total clients: {client_count}")
 
 
@@ -801,6 +808,7 @@ def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
 
 
 def main() -> None:
+  params.put_bool("RemoteUIClientConnected", False)
   wait_for_wifi()
 
   print("=" * 60)
@@ -818,4 +826,5 @@ def main() -> None:
   try:
     app.run(host='0.0.0.0', port=8081, debug=False)
   finally:
+    params.put_bool("RemoteUIClientConnected", False)
     shm_reader.close()
