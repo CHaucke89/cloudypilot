@@ -22,7 +22,7 @@ def main():
   config_realtime_process(0, Priority.CTRL_HIGH)
 
   gui_app.init_window("UI")
-  remote = RemoteUI()
+  remote = None
   try:
     if BIG_UI:
       MainLayout()
@@ -43,7 +43,13 @@ def main():
           except OSError:
             pass
 
-        if ui_state.remote_ui and ui_state.remote_ui_client_connected:
+        if ui_state.remote_ui and remote is None:
+          remote = RemoteUI()
+        elif not ui_state.remote_ui and remote is not None:
+          remote.close()
+          remote = None
+
+        if remote is not None and ui_state.remote_ui_client_connected:
           remote.stream_frame()
 
         extra_cpu = time.monotonic() - extra_start
@@ -52,7 +58,8 @@ def main():
         msg.uiDebug.frameTimeMillis = frame_time * 1000
         pm.send('uiDebug', msg)
   finally:
-    remote.close()
+    if remote is not None:
+      remote.close()
 
 if __name__ == "__main__":
   main()
