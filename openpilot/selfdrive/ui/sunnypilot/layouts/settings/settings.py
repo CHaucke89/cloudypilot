@@ -29,14 +29,6 @@ from openpilot.system.ui.lib.multilang import tr_noop
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.wifi_manager import WifiManager
 from openpilot.system.ui.sunnypilot.lib.styles import style
-if gui_app.cloudypilot_ui():
-  from openpilot.system.ui.cloudypilot.lib.styles import style
-  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.developer import DeveloperLayoutCP as DeveloperLayoutSP
-  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.device import DeviceLayoutCP as DeviceLayoutSP
-  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.display import DisplayLayoutCP as DisplayLayout
-  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.models import ModelsLayoutCP as ModelsLayout
-  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.steering import SteeringLayoutCP as SteeringLayout
-  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.visuals import VisualsLayoutCP as VisualsLayout
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.scroller_tici import Scroller
 
