@@ -22,43 +22,43 @@ def main():
 
   gui_app.init_window("UI")
   remote = None
-  try:
-    if BIG_UI:
-      MainLayout()
-    else:
-      MiciMainLayout()
 
-    pm = messaging.PubMaster(['uiDebug'])
-    for should_render, frame_time, cpu_time in gui_app.render():
-      extra_start = time.monotonic()
-      ui_state.update()
-      gui_app.set_should_render(True)
+  if BIG_UI:
+    MainLayout()
+  else:
+    MiciMainLayout()
 
-      if should_render:
-        # reaffine after power save offlines our core
-        if COMMA_HARDWARE and os.sched_getaffinity(0) != cores:
-          try:
-            set_core_affinity(list(cores))
-          except OSError:
-            pass
+  pm = messaging.PubMaster(['uiDebug'])
+  for should_render, frame_time, cpu_time in gui_app.render():
+    extra_start = time.monotonic()
+    ui_state.update()
+    gui_app.set_should_render(True)
 
-        if ui_state.remote_ui and remote is None:
-          remote = RemoteUI()
-        elif not ui_state.remote_ui and remote is not None:
-          remote.close()
-          remote = None
+    if should_render:
+      # reaffine after power save offlines our core
+      if COMMA_HARDWARE and os.sched_getaffinity(0) != cores:
+        try:
+          set_core_affinity(list(cores))
+        except OSError:
+          pass
 
-        if remote is not None and ui_state.remote_ui_client_connected:
-          remote.stream_frame()
+      if ui_state.remote_ui and ui_state.remote_ui_client_connected and remote is None:
+        remote = RemoteUI()
+      elif not ui_state.remote_ui and remote is not None:
+        remote.close()
+        remote = None
 
-        extra_cpu = time.monotonic() - extra_start
-        msg = messaging.new_message('uiDebug')
-        msg.uiDebug.cpuTimeMillis = (cpu_time + extra_cpu) * 1000
-        msg.uiDebug.frameTimeMillis = frame_time * 1000
-        pm.send('uiDebug', msg)
-  finally:
-    if remote is not None:
-      remote.close()
+      if remote is not None and ui_state.remote_ui_client_connected:
+        remote.stream_frame()
+
+      extra_cpu = time.monotonic() - extra_start
+      msg = messaging.new_message('uiDebug')
+      msg.uiDebug.cpuTimeMillis = (cpu_time + extra_cpu) * 1000
+      msg.uiDebug.frameTimeMillis = frame_time * 1000
+      pm.send('uiDebug', msg)
+
+  if remote is not None:
+    remote.close()
 
 if __name__ == "__main__":
   main()
