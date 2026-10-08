@@ -16,7 +16,7 @@ if gui_app.sunnypilot_ui():
   from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP as HomeLayout
 
 if gui_app.cloudypilot_ui():
-  from openpilot.selfdrive.ui.sunnypilot.layouts.settings.settings import SettingsLayoutSP as SettingsLayout
+  from openpilot.selfdrive.ui.cloudypilot.layouts.settings.settings import SettingsLayoutCP as SettingsLayout
   from openpilot.selfdrive.ui.cloudypilot.layouts.home import HomeLayoutCP as HomeLayout
 
 # Re-import PanelType after sunnypilot conditionals to pick up any modifications
