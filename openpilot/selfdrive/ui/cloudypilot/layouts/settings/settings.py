@@ -11,6 +11,8 @@ class SettingsLayoutCP(SP.SettingsLayoutSP):
   def __init__(self):
     super().__init__()
 
+    self._panels.pop(SP.OP.PanelType.FIREHOSE, None)
+
     panel_overrides = {
       SP.OP.PanelType.DEVICE: DeviceLayoutCP,
       SP.OP.PanelType.DEVELOPER: DeveloperLayoutCP,
