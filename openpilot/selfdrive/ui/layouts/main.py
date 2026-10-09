@@ -16,6 +16,8 @@ if gui_app.sunnypilot_ui():
   from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP as HomeLayout
 
 if gui_app.cloudypilot_ui():
+  from openpilot.selfdrive.ui.cloudypilot.layouts.sidebar import SidebarCP as Sidebar
+  from openpilot.selfdrive.ui.cloudypilot.layouts.sidebar import SIDEBAR_WIDTH
   from openpilot.selfdrive.ui.cloudypilot.layouts.settings.settings import SettingsLayoutCP as SettingsLayout
   from openpilot.selfdrive.ui.cloudypilot.layouts.home import HomeLayoutCP as HomeLayout
 
