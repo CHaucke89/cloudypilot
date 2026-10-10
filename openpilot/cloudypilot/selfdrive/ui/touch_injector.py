@@ -6,10 +6,6 @@ objects. raylib has no event queue to post into: input is *polled* every frame
 (``is_mouse_button_pressed`` etc.). So instead we monkeypatch pyray's input
 functions to report remote state, falling back to the real functions when no
 remote client is active.
-
-Wire protocol matches ``openpilot.cloudypilot.system.remote_ui.stream_server`` exactly: a JSON object per
-connection over a ``SOCK_STREAM`` Unix socket at ``/tmp/ui_touch_socket``, e.g.
-``{"type": "click", "x": 100, "y": 200}``.
 """
 
 import json
@@ -38,15 +34,14 @@ class TouchInjector:
     self.thread = None
     self._lock = threading.Lock()
 
-    # Remote input state (guarded by _lock).
     self._last_msg_time = 0.0
     self._x = 0
     self._y = 0
     self._down = False
-    self._down_until = None  # auto-release time for taps; None = held
-    self._need_release = False  # pending falling edge for is_..._released
-    self._pressed_consumed = True  # rising edge already reported?
-    self._wheel = 0.0  # pending scroll delta
+    self._down_until = None
+    self._need_release = False
+    self._pressed_consumed = True
+    self._wheel = 0.0
 
     # Keep references to the genuine pyray functions for local fallback.
     self._orig_get_touch_position = pr.get_touch_position
@@ -151,8 +146,6 @@ class TouchInjector:
     self._down = False
     self._down_until = None
 
-  # --- state helpers (call with _lock held) ------------------------------
-
   def _refresh(self, now):
     """Advance the tap auto-release timer."""
     if self._down and self._down_until is not None and now >= self._down_until:
@@ -160,8 +153,6 @@ class TouchInjector:
 
   def _remote_active(self, now):
     return (now - self._last_msg_time) < REMOTE_TIMEOUT_S
-
-  # --- pyray hooks -------------------------------------------------------
 
   def _hook_get_touch_position(self, slot):
     now = time.monotonic()
