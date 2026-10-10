@@ -35,11 +35,15 @@ MAX_CONNECTED_FRAME_RATE_LIMIT = 10
 MIN_JPEG_QUALITY = 55
 MAX_JPEG_QUALITY = 90
 CLIENT_STATE_POLL_S = 0.5
+FEEDBACK_POLL_S = 0.5
 ADAPT_DECAY = 0.75
 ADAPT_RECOVER_S = 2.0
 ADAPT_HIGH_PRESSURE = 1.1
 ADAPT_LOW_PRESSURE = 0.6
 JPEG_SIZE_BUDGET_AT_10_FPS = 220_000
+LATENCY_BUDGET_MS = 200.0
+BUFFERED_AMOUNT_BUDGET = 200_000.0
+MIN_BROWSER_RENDER_FPS = 3.0
 
 
 class FrameStreamer:
@@ -52,8 +56,13 @@ class FrameStreamer:
     self.target_frame_rate = FRAME_RATE_LIMIT
     self.jpeg_quality = JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
+    self.browser_pressure_ewma = 0.0
+    self.client_latency_ms = 0.0
+    self.client_render_fps = 0.0
+    self.client_buffered_amount = 0.0
     self.last_adapt_time = 0.0
     self.last_client_state_poll = 0.0
+    self.last_feedback_poll = 0.0
     self._init_shm()
 
   def _set_frame_rate(self, frame_rate):
@@ -64,11 +73,13 @@ class FrameStreamer:
     self._set_frame_rate(DISCONNECTED_FRAME_RATE_LIMIT)
     self.jpeg_quality = DISCONNECTED_JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
+    self.browser_pressure_ewma = 0.0
 
   def _set_connected_defaults(self):
     self._set_frame_rate(FRAME_RATE_LIMIT)
     self.jpeg_quality = JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
+    self.browser_pressure_ewma = 0.0
 
   def _poll_client_state(self, now_mono):
     if (now_mono - self.last_client_state_poll) < CLIENT_STATE_POLL_S:
@@ -92,24 +103,48 @@ class FrameStreamer:
   def _jpeg_size_budget(self):
     return int(JPEG_SIZE_BUDGET_AT_10_FPS * (FRAME_RATE_LIMIT / float(self.target_frame_rate)))
 
+  def _poll_browser_feedback(self, now_mono):
+    if (now_mono - self.last_feedback_poll) < FEEDBACK_POLL_S:
+      return
+
+    self.last_feedback_poll = now_mono
+    try:
+      self.client_latency_ms = float(self.params.get("RemoteUIClientLatencyMs") or 0.0)
+      self.client_render_fps = float(self.params.get("RemoteUIClientRenderFps") or 0.0)
+      self.client_buffered_amount = float(self.params.get("RemoteUIClientBufferedAmount") or 0.0)
+    except Exception:
+      self.client_latency_ms = 0.0
+      self.client_render_fps = 0.0
+      self.client_buffered_amount = 0.0
+
+    latency_pressure = self.client_latency_ms / LATENCY_BUDGET_MS
+    buffered_pressure = self.client_buffered_amount / BUFFERED_AMOUNT_BUDGET
+    render_fps_pressure = 0.0
+    if self.client_render_fps > 0.0:
+      render_fps_pressure = MIN_BROWSER_RENDER_FPS / self.client_render_fps
+
+    browser_pressure = max(latency_pressure, buffered_pressure, render_fps_pressure)
+    self.browser_pressure_ewma = (ADAPT_DECAY * self.browser_pressure_ewma) + ((1.0 - ADAPT_DECAY) * browser_pressure)
+
   def _update_adaptive_rate(self, now_mono, encode_ms, jpeg_size):
     if not self.client_connected:
       return
 
     frame_budget_ms = 1000.0 / float(self.target_frame_rate)
-    pressure = max(
+    encode_pressure = max(
       encode_ms / max(frame_budget_ms, 1.0),
       jpeg_size / max(float(self._jpeg_size_budget()), 1.0),
     )
-    self.encode_pressure_ewma = (ADAPT_DECAY * self.encode_pressure_ewma) + ((1.0 - ADAPT_DECAY) * pressure)
+    self.encode_pressure_ewma = (ADAPT_DECAY * self.encode_pressure_ewma) + ((1.0 - ADAPT_DECAY) * encode_pressure)
+    pressure = max(self.encode_pressure_ewma, self.browser_pressure_ewma)
 
-    if self.encode_pressure_ewma > ADAPT_HIGH_PRESSURE and (now_mono - self.last_adapt_time) >= 0.5:
+    if pressure > ADAPT_HIGH_PRESSURE and (now_mono - self.last_adapt_time) >= 0.5:
       if self.jpeg_quality > MIN_JPEG_QUALITY:
         self.jpeg_quality = max(MIN_JPEG_QUALITY, self.jpeg_quality - 5)
       elif self.target_frame_rate > MIN_CONNECTED_FRAME_RATE_LIMIT:
         self._set_frame_rate(self.target_frame_rate - 1)
       self.last_adapt_time = now_mono
-    elif self.encode_pressure_ewma < ADAPT_LOW_PRESSURE and (now_mono - self.last_adapt_time) >= ADAPT_RECOVER_S:
+    elif pressure < ADAPT_LOW_PRESSURE and (now_mono - self.last_adapt_time) >= ADAPT_RECOVER_S:
       if self.target_frame_rate < MAX_CONNECTED_FRAME_RATE_LIMIT:
         self._set_frame_rate(self.target_frame_rate + 1)
       elif self.jpeg_quality < MAX_JPEG_QUALITY:
@@ -150,6 +185,7 @@ class FrameStreamer:
 
     now_mono = time.monotonic()
     self._poll_client_state(now_mono)
+    self._poll_browser_feedback(now_mono)
     if (now_mono - self.last_capture_time) < self.frame_interval:
       return
     self.last_capture_time = now_mono
