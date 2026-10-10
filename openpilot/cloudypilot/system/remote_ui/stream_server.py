@@ -235,114 +235,9 @@ HTML_PAGE = """
 <!DOCTYPE html>
 <html>
 <head>
-  <title>OpenPilot UI Stream - Real-Time</title>
+  <title>cloudypilot Remote UI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    #ui-container {
-      position: relative;
-      max-width: 100%;
-      max-height: 100%;
-    }
-    #ui {
-      width: 100%;
-      height: auto;
-      touch-action: none;
-      user-select: none;
-      image-rendering: optimizeSpeed;
-      display: block;
-    }
-    .status {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #fff;
-      background: rgba(0,0,0,0.8);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      backdrop-filter: blur(10px);
-      z-index: 100;
-    }
-    .status-indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #ff4444;
-      animation: pulse 2s infinite;
-    }
-    .status-indicator.connected {
-      background: #ffa200;
-      animation: none;
-    }
-    .status-indicator.streaming {
-      background: #ffa200;
-      animation: pulse 1s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-    .stats {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      color: #fff;
-      background: rgba(0,0,0,0.8);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-family: monospace;
-      backdrop-filter: blur(10px);
-      z-index: 100;
-    }
-    .touch-indicator {
-      position: absolute;
-      width: 40px;
-      height: 40px;
-      border: 2px solid #ffa200;
-      border-radius: 50%;
-      background: rgba(0, 255, 0, 0.2);
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-      animation: fadeOut 0.5s ease-out forwards;
-      z-index: 200;
-    }
-    @keyframes fadeOut {
-      0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
-    }
-    .loading {
-      color: #fff;
-      text-align: center;
-      padding: 20px;
-      font-size: 18px;
-    }
-    #debug {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      color: #0f0;
-      background: rgba(0,0,0,0.8);
-      padding: 5px;
-      font-family: monospace;
-      font-size: 10px;
-      max-width: 300px;
-      z-index: 100;
-    }
-  </style>
+  <link rel="stylesheet" href="/remote_ui.css">
 </head>
 <body>
   <div id="ui-container">
@@ -371,6 +266,11 @@ def index():
 @app.route('/remote_ui.js')
 def remote_ui_js():
   return send_from_directory(os.path.dirname(__file__), 'remote_ui_client.js')
+
+
+@app.route('/remote_ui.css')
+def remote_ui_css():
+  return send_from_directory(os.path.dirname(__file__), 'remote_ui.css')
 
 
 @app.route('/input', methods=['POST'])
@@ -540,7 +440,7 @@ def main() -> None:
   wait_for_wifi()
 
   print("=" * 60)
-  print("🚀 OpenPilot UI Real-Time Streaming Server")
+  print("cloudypilot Remote UI Streaming Server")
   print("=" * 60)
   print("✅ Zero disk storage - Memory only")
   print("✅ WebSocket real-time streaming")
