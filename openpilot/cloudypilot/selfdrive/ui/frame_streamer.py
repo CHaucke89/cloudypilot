@@ -15,6 +15,8 @@ from multiprocessing import shared_memory as shm
 from PIL import Image
 import pyray as pr
 
+from openpilot.common.params import Params
+
 SHM_NAME = "openpilot_ui_frames"  # created at /dev/shm/openpilot_ui_frames
 FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes (max 1080p RGBA)
 METADATA_SIZE = 31
@@ -26,13 +28,93 @@ FORMAT_JPEG = 1
 JPEG_QUALITY = 85
 FRAME_RATE_LIMIT = 10  # FPS
 
+DISCONNECTED_FRAME_RATE_LIMIT = 1
+DISCONNECTED_JPEG_QUALITY = 60
+MIN_CONNECTED_FRAME_RATE_LIMIT = 4
+MAX_CONNECTED_FRAME_RATE_LIMIT = 10
+MIN_JPEG_QUALITY = 55
+MAX_JPEG_QUALITY = 90
+CLIENT_STATE_POLL_S = 0.5
+ADAPT_DECAY = 0.75
+ADAPT_RECOVER_S = 2.0
+ADAPT_HIGH_PRESSURE = 1.1
+ADAPT_LOW_PRESSURE = 0.6
+JPEG_SIZE_BUDGET_AT_10_FPS = 220_000
+
 
 class FrameStreamer:
   def __init__(self):
     self.last_capture_time = 0.0
     self.frame_interval = 1.0 / FRAME_RATE_LIMIT
     self.shm = None
+    self.params = Params()
+    self.client_connected = False
+    self.target_frame_rate = FRAME_RATE_LIMIT
+    self.jpeg_quality = JPEG_QUALITY
+    self.encode_pressure_ewma = 0.0
+    self.last_adapt_time = 0.0
+    self.last_client_state_poll = 0.0
     self._init_shm()
+
+  def _set_frame_rate(self, frame_rate):
+    self.target_frame_rate = max(1, frame_rate)
+    self.frame_interval = 1.0 / float(self.target_frame_rate)
+
+  def _set_disconnected_mode(self):
+    self._set_frame_rate(DISCONNECTED_FRAME_RATE_LIMIT)
+    self.jpeg_quality = DISCONNECTED_JPEG_QUALITY
+    self.encode_pressure_ewma = 0.0
+
+  def _set_connected_defaults(self):
+    self._set_frame_rate(FRAME_RATE_LIMIT)
+    self.jpeg_quality = JPEG_QUALITY
+    self.encode_pressure_ewma = 0.0
+
+  def _poll_client_state(self, now_mono):
+    if (now_mono - self.last_client_state_poll) < CLIENT_STATE_POLL_S:
+      return
+
+    self.last_client_state_poll = now_mono
+    try:
+      connected = self.params.get_bool("RemoteUIClientConnected")
+    except Exception:
+      connected = False
+
+    if connected == self.client_connected:
+      return
+
+    self.client_connected = connected
+    if connected:
+      self._set_connected_defaults()
+    else:
+      self._set_disconnected_mode()
+
+  def _jpeg_size_budget(self):
+    return int(JPEG_SIZE_BUDGET_AT_10_FPS * (FRAME_RATE_LIMIT / float(self.target_frame_rate)))
+
+  def _update_adaptive_rate(self, now_mono, encode_ms, jpeg_size):
+    if not self.client_connected:
+      return
+
+    frame_budget_ms = 1000.0 / float(self.target_frame_rate)
+    pressure = max(
+      encode_ms / max(frame_budget_ms, 1.0),
+      jpeg_size / max(float(self._jpeg_size_budget()), 1.0),
+    )
+    self.encode_pressure_ewma = (ADAPT_DECAY * self.encode_pressure_ewma) + ((1.0 - ADAPT_DECAY) * pressure)
+
+    if self.encode_pressure_ewma > ADAPT_HIGH_PRESSURE and (now_mono - self.last_adapt_time) >= 0.5:
+      if self.jpeg_quality > MIN_JPEG_QUALITY:
+        self.jpeg_quality = max(MIN_JPEG_QUALITY, self.jpeg_quality - 5)
+      elif self.target_frame_rate > MIN_CONNECTED_FRAME_RATE_LIMIT:
+        self._set_frame_rate(self.target_frame_rate - 1)
+      self.last_adapt_time = now_mono
+    elif self.encode_pressure_ewma < ADAPT_LOW_PRESSURE and (now_mono - self.last_adapt_time) >= ADAPT_RECOVER_S:
+      if self.target_frame_rate < MAX_CONNECTED_FRAME_RATE_LIMIT:
+        self._set_frame_rate(self.target_frame_rate + 1)
+      elif self.jpeg_quality < MAX_JPEG_QUALITY:
+        self.jpeg_quality = min(MAX_JPEG_QUALITY, self.jpeg_quality + 2)
+      self.last_adapt_time = now_mono
 
   def _init_shm(self):
     # Match the C++ behavior: unlink any stale segment, then (re)create.
@@ -67,6 +149,7 @@ class FrameStreamer:
       return
 
     now_mono = time.monotonic()
+    self._poll_client_state(now_mono)
     if (now_mono - self.last_capture_time) < self.frame_interval:
       return
     self.last_capture_time = now_mono
@@ -79,6 +162,7 @@ class FrameStreamer:
 
     rl_image = pr.load_image_from_screen()
     try:
+      encode_start = time.monotonic()
       width = rl_image.width
       height = rl_image.height
       if not width or not height:
@@ -96,8 +180,9 @@ class FrameStreamer:
       pil_img = pil_img.convert("RGB")  # JPEG has no alpha channel
 
       with io.BytesIO() as out:
-        pil_img.save(out, format="JPEG", quality=JPEG_QUALITY)
+        pil_img.save(out, format="JPEG", quality=self.jpeg_quality)
         jpeg = out.getvalue()
+      encode_ms = (time.monotonic() - encode_start) * 1000.0
 
       if len(jpeg) > FRAME_DATA_SIZE:
         print(f"FrameStreamer: frame too large ({len(jpeg)} bytes), dropping")
@@ -116,6 +201,7 @@ class FrameStreamer:
         1,  # ready
       )
       shm_buf[0:METADATA_SIZE] = header
+      self._update_adaptive_rate(now_mono, encode_ms, len(jpeg))
     except Exception as e:
       print(f"FrameStreamer error: {e}")
     finally:
