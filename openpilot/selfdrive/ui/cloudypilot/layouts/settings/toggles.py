@@ -28,7 +28,10 @@ class TogglesLayoutCP(TogglesLayout):
   def _toggle_callback(self, state: bool, param: str):
     if param == "AlwaysOffDM" and state:
       self._params.put_bool("AlwaysOnDM", False)
+      self._toggles["AlwaysOnDM"].action_item.set_state(False)
     elif param == "AlwaysOnDM" and state:
       self._params.put_bool("AlwaysOffDM", False)
+      self._toggles["AlwaysOffDM"].action_item.set_state(False)
+
 
     super()._toggle_callback(state, param)
