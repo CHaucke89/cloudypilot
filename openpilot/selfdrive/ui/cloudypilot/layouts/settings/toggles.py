@@ -24,3 +24,11 @@ class TogglesLayoutCP(TogglesLayout):
 
     items.insert(items.index(self._toggles["AlwaysOnDM"]) + 1, toggle)
     return items
+
+  def _toggle_callback(self, state: bool, param: str):
+    if param == "AlwaysOffDM" and state:
+      self._params.put_bool("AlwaysOnDM", False)
+    elif param == "AlwaysOnDM" and state:
+      self._params.put_bool("AlwaysOffDM", False)
+
+    super()._toggle_callback(state, param)
