@@ -38,6 +38,18 @@ clients_lock = threading.Lock()
 params = Params()
 
 
+def publish_browser_feedback(data):
+  try:
+    latency_ms = float(data.get('latency_ms', 0.0) or 0.0)
+    render_fps = float(data.get('render_fps', 0.0) or 0.0)
+    buffered_amount = float(data.get('buffered_amount', 0.0) or 0.0)
+    params.put('RemoteUIClientLatencyMs', latency_ms)
+    params.put('RemoteUIClientRenderFps', render_fps)
+    params.put('RemoteUIClientBufferedAmount', buffered_amount)
+  except Exception as e:
+    print(f"Failed to publish browser feedback: {e}")
+
+
 # Frame cache for efficient streaming
 class FrameCache:
   def __init__(self, max_frames=3):
@@ -681,6 +693,7 @@ def stream(ws):
 
   if client_count == 1:
     params.put_bool("RemoteUIClientConnected", True)
+    publish_browser_feedback({'latency_ms': 0.0, 'render_fps': 0.0, 'buffered_amount': 0.0})
 
   print(f"Total clients: {client_count}")
 
@@ -741,6 +754,8 @@ def stream(ws):
                   }
                 )
               )
+          elif msg.get('type') == 'feedback':
+            publish_browser_feedback(msg)
         except (json.JSONDecodeError, TypeError):
           pass
 
@@ -752,6 +767,7 @@ def stream(ws):
       client_count = len(websocket_clients)
     if client_count == 0:
       params.put_bool("RemoteUIClientConnected", False)
+      publish_browser_feedback({'latency_ms': 0.0, 'render_fps': 0.0, 'buffered_amount': 0.0})
     print(f"Client {client_id} disconnected. Total clients: {client_count}")
 
 
@@ -809,6 +825,7 @@ def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
 
 def main() -> None:
   params.put_bool("RemoteUIClientConnected", False)
+  publish_browser_feedback({'latency_ms': 0.0, 'render_fps': 0.0, 'buffered_amount': 0.0})
   wait_for_wifi()
 
   print("=" * 60)
@@ -827,4 +844,5 @@ def main() -> None:
     app.run(host='0.0.0.0', port=8081, debug=False)
   finally:
     params.put_bool("RemoteUIClientConnected", False)
+    publish_browser_feedback({'latency_ms': 0.0, 'render_fps': 0.0, 'buffered_amount': 0.0})
     shm_reader.close()
