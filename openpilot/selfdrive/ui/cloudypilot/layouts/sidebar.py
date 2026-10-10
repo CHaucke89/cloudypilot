@@ -24,21 +24,20 @@ ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType
 
 
-# Color scheme
 class Colors:
-  WHITE = rl.Color(255, 184, 77, 255)
-  WHITE_DIM = rl.Color(255, 184, 77, 85)
+  WHITE = rl.WHITE
+  WHITE_DIM = rl.Color(255, 255, 255, 85)
   GRAY = rl.Color(84, 84, 84, 255)
 
   # Status colors
-  GOOD = rl.Color(255, 184, 77, 255)
-  WARNING = rl.Color(255, 152, 0, 255)
+  GOOD = rl.WHITE
+  WARNING = rl.Color(218, 202, 37, 255)
   DANGER = rl.Color(201, 34, 49, 255)
 
   # UI elements
-  METRIC_BORDER = rl.Color(255, 184, 77, 85)
-  BUTTON_NORMAL = rl.Color(255, 184, 77, 255)
-  BUTTON_PRESSED = rl.Color(255, 184, 77, 166)
+  METRIC_BORDER = rl.Color(255, 255, 255, 85)
+  BUTTON_NORMAL = rl.WHITE
+  BUTTON_PRESSED = rl.Color(255, 255, 255, 166)
 
 
 NETWORK_TYPES = {
@@ -209,7 +208,7 @@ class SidebarCP(Widget, SidebarSP):
     rl.draw_text_ex(self._font_regular, tr(self._net_type), text_pos, FONT_SIZE, 0, Colors.WHITE)
 
   def _draw_metrics(self, rect: rl.Rectangle):
-    if gui_app.sunnypilot_ui():
+    if gui_app.cloudypilot_ui():
       metrics, start_y, spacing = SidebarSP._draw_metrics_w_sunnylink(self, rect, self._temp_status, self._panda_status, self._connect_status)
       for idx, metric in enumerate(metrics):
         self._draw_metric(rect, metric, start_y + idx * spacing)
