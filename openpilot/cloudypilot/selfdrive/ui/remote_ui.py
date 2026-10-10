@@ -5,26 +5,6 @@ Python equivalent of the old Qt ``main.cc``, which constructed a
 ``MainWindow``. The new openpilot UI has no ``main.cc`` to replace; it runs a
 raylib render loop (``selfdrive/ui/ui.py``). So instead of owning ``main``,
 this module exposes a single object you splice into that existing loop.
-
-Integration (edit ``selfdrive/ui/ui.py``):
-
-    from openpilot.cloudypilot.selfdrive.ui.remote_ui import RemoteUI
-
-    def main():
-        gui_app.init_window("UI")
-        remote = RemoteUI()          # starts the touch socket + input hooks
-        try:
-            for _ in gui_app.render():
-                # ... existing per-frame draw code ...
-                remote.stream_frame()   # capture the frame just drawn
-        finally:
-            remote.close()
-
-``RemoteUI()`` must be created *after* the window/GL context exists (i.e. after
-``gui_app.init_window(...)``), mirroring the old code's 1s delay that waited for
-the window to initialize. ``stream_frame()`` must run while the frame is still
-on screen (before raylib swaps buffers), so call it near the end of the loop
-body, before ``gui_app.render()`` advances.
 """
 
 from openpilot.cloudypilot.selfdrive.ui.frame_streamer import FrameStreamer
