@@ -4,6 +4,7 @@ from openpilot.selfdrive.ui.cloudypilot.layouts.settings.device import DeviceLay
 from openpilot.selfdrive.ui.cloudypilot.layouts.settings.display import DisplayLayoutCP
 from openpilot.selfdrive.ui.cloudypilot.layouts.settings.models import ModelsLayoutCP
 from openpilot.selfdrive.ui.cloudypilot.layouts.settings.steering import SteeringLayoutCP
+from openpilot.selfdrive.ui.cloudypilot.layouts.settings.toggles import TogglesLayoutCP
 from openpilot.selfdrive.ui.cloudypilot.layouts.settings.visuals import VisualsLayoutCP
 
 
@@ -19,6 +20,7 @@ class SettingsLayoutCP(SP.SettingsLayoutSP):
       SP.OP.PanelType.DISPLAY: DisplayLayoutCP,
       SP.OP.PanelType.MODELS: ModelsLayoutCP,
       SP.OP.PanelType.STEERING: SteeringLayoutCP,
+      SP.OP.PanelType.TOGGLES: TogglesLayoutCP,
       SP.OP.PanelType.VISUALS: VisualsLayoutCP,
     }
 
