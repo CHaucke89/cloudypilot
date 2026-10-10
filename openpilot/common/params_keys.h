@@ -307,7 +307,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"CustomSR", {PERSISTENT, FLOAT, "16.0"}},
     {"DoSoftReboot", {CLEAR_ON_MANAGER_START, BOOL}},
     {"EnableRemoteUI", {PERSISTENT | BACKUP, BOOL, "0"}},
-+    {"RemoteUIClientBufferedAmount", {CLEAR_ON_MANAGER_START, FLOAT, "0.0"}},
+    {"RemoteUIClientBufferedAmount", {CLEAR_ON_MANAGER_START, FLOAT, "0.0"}},
     {"RemoteUIClientConnected", {CLEAR_ON_MANAGER_START | CLEAR_ON_IGNITION_ON, BOOL}},
     {"RemoteUIClientLatencyMs", {CLEAR_ON_MANAGER_START, FLOAT, "0.0"}},
     {"RemoteUIClientRenderFps", {CLEAR_ON_MANAGER_START, FLOAT, "0.0"}},
