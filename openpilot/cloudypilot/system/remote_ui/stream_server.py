@@ -13,7 +13,6 @@ import mmap
 import subprocess
 import threading
 import base64
-import queue
 from collections import deque
 
 from flask import Flask, render_template_string, request, jsonify, Response, send_from_directory
@@ -31,8 +30,6 @@ FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes
 METADATA_SIZE = 31  # Packed struct metadata
 SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE  # Total size
 
-# Global queue for frame distribution
-frame_queue = queue.Queue(maxsize=10)
 websocket_clients = set()
 clients_lock = threading.Lock()
 params = Params()
@@ -179,32 +176,6 @@ class SharedMemoryReader:
           frame_count += 1
           # Add to cache
           if frame_cache.add_frame(frame['timestamp'], frame['data'], frame['width'], frame['height']):
-            # Broadcast to all WebSocket clients
-            with clients_lock:
-              if websocket_clients:
-                # Create frame message
-                frame_msg = json.dumps(
-                  {
-                    'type': 'frame',
-                    'timestamp': frame['timestamp'],
-                    'width': frame['width'],
-                    'height': frame['height'],
-                    'format': frame['format'],
-                    'data': base64.b64encode(frame['data']).decode('utf-8'),
-                  }
-                )
-
-                # Add to queue for all clients
-                try:
-                  frame_queue.put_nowait(frame_msg)
-                except queue.Full:
-                  # Remove oldest frame if queue is full
-                  try:
-                    frame_queue.get_nowait()
-                    frame_queue.put_nowait(frame_msg)
-                  except Exception:
-                    pass
-
             # Debug: Check if frame data is valid JPEG
             if frame_count % 10 == 0:
               # Check JPEG header
@@ -320,6 +291,9 @@ def stream(ws):
   print(f"Total clients: {client_count}")
 
   try:
+    last_sent_timestamp = 0
+    last_stats_sent = 0.0
+
     # Send current frame immediately if available
     latest = frame_cache.get_latest()
     if latest:
@@ -334,30 +308,41 @@ def stream(ws):
         }
       )
       ws.send(initial_msg)
+      last_sent_timestamp = latest['timestamp']
       print(f"Sent initial frame to client {client_id}")
 
     # Main streaming loop
     while True:
       try:
-        # Wait for new frames with timeout
-        frame_msg = frame_queue.get(timeout=5)
-
-        # Send frame to this client
-        ws.send(frame_msg)
-
-        # Clear the queue item
-        frame_queue.task_done()
-
-      except queue.Empty:
-        # Send keepalive/stats
-        stats = frame_cache.get_stats()
-        ws.send(json.dumps({'type': 'stats', 'frames_cached': stats['frames_cached'], 'memory_kb': stats['total_memory_kb']}))
+        latest = frame_cache.get_latest()
+        if latest and latest['timestamp'] > last_sent_timestamp:
+          ws.send(
+            json.dumps(
+              {
+                'type': 'frame',
+                'timestamp': latest['timestamp'],
+                'width': latest['width'],
+                'height': latest['height'],
+                'format': 'jpeg',
+                'data': base64.b64encode(latest['data']).decode('utf-8'),
+              }
+            )
+          )
+          last_sent_timestamp = latest['timestamp']
+        elif (time.monotonic() - last_stats_sent) >= 5.0:
+          stats = frame_cache.get_stats()
+          ws.send(json.dumps({'type': 'stats', 'frames_cached': stats['frames_cached'], 'memory_kb': stats['total_memory_kb']}))
+          last_stats_sent = time.monotonic()
       except Exception as e:
         print(f"Error sending to client {client_id}: {e}")
         break
 
       # Check for client messages (like frame requests)
-      data = ws.receive(timeout=0)
+      try:
+        data = ws.receive(timeout=0)
+      except Exception:
+        data = None
+
       if data:
         try:
           msg = json.loads(data)
@@ -380,6 +365,8 @@ def stream(ws):
             publish_browser_feedback(msg)
         except (json.JSONDecodeError, TypeError):
           pass
+
+      time.sleep(0.03)
 
   except Exception as e:
     print(f"Client {client_id} error: {e}")
