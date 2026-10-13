@@ -19,6 +19,8 @@ let lastTelemetrySent = 0;
 let renderedFramesInWindow = 0;
 let renderFps = 0;
 let lastRenderFpsUpdate = Date.now();
+let frameWidth = canvas.width;
+let frameHeight = canvas.height;
 
 // Optimized image rendering
 const imagePool = [];
@@ -46,6 +48,38 @@ function updateStats() {
   }
   const bufferedAmount = ws && ws.readyState === WebSocket.OPEN ? ws.bufferedAmount : 0;
   stats.textContent = `FPS: ${fps} | Render FPS: ${renderFps} | Frames: ${totalFrames} | Latency: ${latency}ms | Buffered: ${bufferedAmount}`;
+}
+
+function getViewportSize() {
+  if (window.visualViewport) {
+    return {
+      width: window.visualViewport.width,
+      height: window.visualViewport.height,
+    };
+  }
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+}
+
+function layoutCanvas() {
+  const { width: vw, height: vh } = getViewportSize();
+  if (!vw || !vh || !frameWidth || !frameHeight) {
+    return;
+  }
+
+  const aspect = frameWidth / frameHeight;
+  let displayWidth = Math.min(vw, vh * aspect);
+  let displayHeight = displayWidth / aspect;
+
+  if (displayHeight > vh) {
+    displayHeight = vh;
+    displayWidth = displayHeight * aspect;
+  }
+
+  canvas.style.width = `${Math.round(displayWidth)}px`;
+  canvas.style.height = `${Math.round(displayHeight)}px`;
 }
 
 function sendFeedback(force = false) {
@@ -77,6 +111,9 @@ function renderFrame(frameData) {
     if (canvas.width !== img.width || canvas.height !== img.height) {
       canvas.width = img.width;
       canvas.height = img.height;
+      frameWidth = img.width;
+      frameHeight = img.height;
+      layoutCanvas();
     }
 
     // Draw frame
@@ -203,8 +240,8 @@ function showTouchIndicator(x, y) {
   const indicator = document.createElement('div');
   indicator.className = 'touch-indicator';
   const rect = canvas.getBoundingClientRect();
-  indicator.style.left = (x + rect.left) + 'px';
-  indicator.style.top = (y + rect.top) + 'px';
+  indicator.style.left = `${x + rect.left}px`;
+  indicator.style.top = `${y + rect.top}px`;
   container.appendChild(indicator);
   setTimeout(() => container.removeChild(indicator), 500);
 }
@@ -320,8 +357,17 @@ canvas.addEventListener('touchcancel', (e) => {
 }, { passive: false });
 
 // Start WebSocket connection
+layoutCanvas();
 connectWebSocket();
 
 // Update stats periodically
 setInterval(updateStats, 100);
 setInterval(() => sendFeedback(false), 500);
+
+window.addEventListener('resize', layoutCanvas);
+window.addEventListener('orientationchange', layoutCanvas);
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', layoutCanvas);
+  window.visualViewport.addEventListener('scroll', layoutCanvas);
+}

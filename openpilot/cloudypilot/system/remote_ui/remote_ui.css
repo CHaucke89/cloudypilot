@@ -1,23 +1,45 @@
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
 body {
   margin: 0;
-  background: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
   overflow: hidden;
+  overscroll-behavior: none;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  touch-action: manipulation;
 }
 
 #ui-container {
-  position: relative;
-  max-width: 100%;
-  max-height: 100%;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+  isolation: isolate;
 }
 
 #ui {
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
+  max-height: 100%;
   touch-action: none;
   user-select: none;
   image-rendering: optimizeSpeed;
@@ -26,8 +48,8 @@ body {
 
 .status {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: calc(var(--safe-top) + 10px);
+  left: calc(var(--safe-left) + 10px);
   color: #fff;
   background: rgba(0, 0, 0, 0.8);
   padding: 8px 12px;
@@ -70,8 +92,8 @@ body {
 
 .stats {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: calc(var(--safe-top) + 10px);
+  right: calc(var(--safe-right) + 10px);
   color: #fff;
   background: rgba(0, 0, 0, 0.8);
   padding: 8px 12px;
@@ -115,8 +137,8 @@ body {
 
 #debug {
   position: absolute;
-  bottom: 10px;
-  left: 10px;
+  bottom: calc(var(--safe-bottom) + 10px);
+  left: calc(var(--safe-left) + 10px);
   color: #0f0;
   background: rgba(0, 0, 0, 0.8);
   padding: 5px;
@@ -124,4 +146,16 @@ body {
   font-size: 10px;
   max-width: 300px;
   z-index: 100;
+}
+
+@media (max-width: 900px) {
+  .stats,
+  #debug {
+    display: none;
+  }
+
+  .status {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
 }

@@ -236,7 +236,13 @@ HTML_PAGE = """
 <html>
 <head>
   <title>cloudypilot Remote UI</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="cloudypilot">
+  <link rel="manifest" href="/remote_ui.webmanifest">
   <link rel="stylesheet" href="/remote_ui.css">
 </head>
 <body>
@@ -271,6 +277,11 @@ def remote_ui_js():
 @app.route('/remote_ui.css')
 def remote_ui_css():
   return send_from_directory(os.path.dirname(__file__), 'remote_ui.css')
+
+
+@app.route('/remote_ui.webmanifest')
+def remote_ui_manifest():
+  return send_from_directory(os.path.dirname(__file__), 'remote_ui.webmanifest')
 
 
 @app.route('/input', methods=['POST'])
