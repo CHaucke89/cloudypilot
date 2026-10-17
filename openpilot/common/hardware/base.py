@@ -75,6 +75,9 @@ class HardwareBase(ABC):
   def reboot(self, reason=None):
     print("REBOOT!")
 
+  def soft_reboot(self, reason=None):
+    print("SOFT REBOOT!")
+
   def uninstall(self):
     print("uninstall")
 
