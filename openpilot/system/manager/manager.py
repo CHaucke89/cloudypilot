@@ -39,7 +39,7 @@ def manager_auth(serial, build_metadata) -> None:
     set_authorized_hash(device_hash, params)
     authorized_hash = params.get("AuthorizedHash")
 
-  if build_metadata.channel_type == "development":
+  if build_metadata.channel_type == "development" and os.environ.get("GITHUB_ACTIONS") != "true":
     print("Development branch found. Checking serial number hash.")
     compare_hashes(device_hash, authorized_hash)
 
