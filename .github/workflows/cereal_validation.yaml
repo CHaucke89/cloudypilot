@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - ch-dev
   pull_request:
     paths:
       - 'openpilot/cereal/**'

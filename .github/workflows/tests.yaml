@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - ch-dev
   pull_request:
   workflow_dispatch:
   workflow_call:
