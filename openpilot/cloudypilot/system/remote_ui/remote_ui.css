@@ -48,8 +48,8 @@ body {
 
 .status {
   position: absolute;
-  top: calc(var(--safe-top) + 10px);
-  left: calc(var(--safe-left) + 10px);
+  bottom: calc(var(--safe-bottom) + 10px);
+  right: calc(var(--safe-right) + 10px);
   color: #fff;
   background: rgba(0, 0, 0, 0.8);
   padding: 8px 12px;
