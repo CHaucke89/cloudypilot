@@ -17,7 +17,7 @@ from collections import deque
 
 from flask import Flask, render_template_string, request, jsonify, Response, send_from_directory
 from flask_sock import Sock
-from openpilot.common.params import Params
+from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateWriter
 
 app = Flask(__name__)
 sock = Sock(app)
@@ -32,7 +32,7 @@ SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE  # Total size
 
 websocket_clients = set()
 clients_lock = threading.Lock()
-params = Params()
+client_state: ClientStateWriter | None = None
 
 
 # Frame cache for efficient streaming
@@ -271,9 +271,8 @@ def stream(ws):
   with clients_lock:
     websocket_clients.add(ws)
     client_count = len(websocket_clients)
-
-  if client_count == 1:
-    params.put_bool("RemoteUIClientConnected", True)
+    if client_state is not None:
+      client_state.set_client_count(client_count)
 
   print(f"Total clients: {client_count}")
 
@@ -359,8 +358,8 @@ def stream(ws):
     with clients_lock:
       websocket_clients.discard(ws)
       client_count = len(websocket_clients)
-    if client_count == 0:
-      params.put_bool("RemoteUIClientConnected", False)
+      if client_state is not None:
+        client_state.set_client_count(client_count)
     print(f"Client {client_id} disconnected. Total clients: {client_count}")
 
 
@@ -417,7 +416,8 @@ def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
 
 
 def main() -> None:
-  params.put_bool("RemoteUIClientConnected", False)
+  global client_state
+  client_state = ClientStateWriter()
   wait_for_wifi()
 
   print("=" * 60)
@@ -435,5 +435,5 @@ def main() -> None:
   try:
     app.run(host='0.0.0.0', port=8081, debug=False)
   finally:
-    params.put_bool("RemoteUIClientConnected", False)
+    client_state.close()
     shm_reader.close()
