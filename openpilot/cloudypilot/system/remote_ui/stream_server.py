@@ -15,6 +15,9 @@ import threading
 import base64
 from collections import deque
 
+from openpilot.cloudypilot.system.remote_ui.deps import ensure_deps
+ensure_deps()
+
 from flask import Flask, render_template_string, request, jsonify, Response, send_from_directory
 from flask_sock import Sock
 from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateWriter

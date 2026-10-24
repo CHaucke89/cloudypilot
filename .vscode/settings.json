@@ -16,6 +16,7 @@
   "python.analysis.exclude": [
     "**/.git",
     "**/.venv",
-    "**/__pycache__",
-  ]
+    "**/__pycache__"
+  ],
+  "C_Cpp_Runner.msvcBatchPath": ""
 }
