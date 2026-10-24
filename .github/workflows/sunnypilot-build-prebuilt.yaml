@@ -1,20 +1,18 @@
-name: sunnypilot prebuilt action
+name: cloudypilot prebuilt action
 
 env:
-  BUILD_DIR: "/data/openpilot"
+  # not /data/openpilot: the runner is a real device and that's its live install
+  BUILD_DIR: "/data/cloudypilot-build"
   OUTPUT_DIR: ${{ github.workspace }}/output
   CI_DIR: ${{ github.workspace }}/release/ci
-  PUBLIC_REPO_URL: "https://github.com/sunnypilot/sunnypilot"
+  PUBLIC_REPO_URL: "https://github.com/CHaucke89/cloudypilot"
 
   # Runtime configuration
-  SOURCE_BRANCH: "${{ github.head_ref || github.ref_name }}"
+  SOURCE_BRANCH: "${{ github.ref_name }}"
 
 on:
   push:
-    branches: [ master, master-dev ]
-    tags: [ 'release/*' ]
-  pull_request_target:
-    types: [ labeled ]
+    branches: [ master ]
   workflow_dispatch:
     inputs:
       wait_for_tests:
@@ -26,99 +24,83 @@ on:
 jobs:
   prepare_strategy:
     runs-on: ubuntu-24.04
-    if: (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))
+    if: github.repository == 'CHaucke89/cloudypilot'
     outputs:
-      environment: ${{ steps.strategy.outputs.environment }}
       new_branch: ${{ steps.strategy.outputs.new_branch }}
       extra_version_identifier: ${{ steps.strategy.outputs.extra_version_identifier }}
       version: ${{ steps.strategy.outputs.version }}
-      cancel_publish_in_progress: ${{ steps.strategy.outputs.cancel_publish_in_progress }}
-      publish_concurrency_group: ${{ steps.strategy.outputs.publish_concurrency_group }}
-      is_stable_branch: ${{ steps.strategy.outputs.is_stable_branch }}
-      build: ${{ steps.strategy.outputs.build }}
-      include_big_model: ${{ steps.strategy.outputs.include_big_model }}
+      driving_onnx_sha256: ${{ steps.models.outputs.driving_onnx_sha256 }}
+      tinygrad_ref: ${{ steps.models.outputs.tinygrad_ref }}
+      use_hf_model: ${{ steps.models.outputs.use_hf_model }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
       - name: Extract deploy strategy
         id: strategy
         run: |
-          echo '::group::Strategy Extraction'
-          BRANCH="${{ github.head_ref || github.ref_name }}"
+          BRANCH="${{ github.ref_name }}"
           echo "Current branch: $BRANCH"
-
-          STRATEGY_JSON='${{ vars.DEPLOY_STRATEGY }}'
-          CONFIG=$(echo "$STRATEGY_JSON" | jq -r --arg branch "$BRANCH" '
-            .configs[] | select(.branch == $branch)
-          ')
-
-          BUILD="$(date '+%Y.%m.%d')-${{ github.run_number }}"
-          if [[ -z "$CONFIG" || "$CONFIG" == "null" ]]; then
-            echo "No exact strategy match found. Falling back to feature/fork logic."
-            IS_FORK="${{ github.event.pull_request.head.repo.fork && 'true' || 'false' }}"
-            FORK_SUFFIX=$( [[ "$IS_FORK" == "true" ]] && echo "-fork" || echo "" )
-            NEW_BRANCH="${BRANCH}${FORK_SUFFIX}-prebuilt"
-
-            echo "new_branch=$NEW_BRANCH" >> $GITHUB_OUTPUT
-            echo "version=$BUILD" >> $GITHUB_OUTPUT
-            echo "cancel_publish_in_progress=true" >> $GITHUB_OUTPUT
-            echo "publish_concurrency_group=publish-${BRANCH}" >> $GITHUB_OUTPUT
-            echo "environment=feature-branch" >> $GITHUB_OUTPUT
-            echo "extra_version_identifier=feature-branch" >> $GITHUB_OUTPUT
-          else
-          echo "Matched config: $CONFIG"
-            environment=$(echo "$CONFIG" | jq -r '.environment')
-            echo "environment=$environment" >> $GITHUB_OUTPUT
-            echo "new_branch=$(echo "$CONFIG" | jq -r '.target_branch')" >> $GITHUB_OUTPUT
-            cancel="$(echo "$CONFIG" | jq -r '.cancel_publish_in_progress')";
-            echo "cancel_publish_in_progress=$( [ "$cancel" = "null" ] && echo "true" || echo $cancel)" >> $GITHUB_OUTPUT
-            echo "publish_concurrency_group=publish-${BRANCH}$( [ "$cancel" = "null" ] || [ "$cancel" = "true" ] || echo "${{ github.sha }}" )" >> $GITHUB_OUTPUT
-
-            is_stable_branch="$(echo "$CONFIG" | jq -r '.stable_branch // false')";
-            echo "is_stable_branch=$is_stable_branch" >> $GITHUB_OUTPUT
-
-            stable_version=$(cat openpilot/sunnypilot/common/version.h | grep SUNNYPILOT_VERSION | sed -e 's/[^0-9|.]//g');
-            echo "version=$([ "$is_stable_branch" = "true" ] && echo "$stable_version" || echo "$BUILD")" >> $GITHUB_OUTPUT
-            echo "extra_version_identifier=${environment}" >> $GITHUB_OUTPUT
-
-            include_big_model="$(echo "$CONFIG" | jq -r '.include_big_model // false')";
-            echo "include_big_model=$include_big_model" >> $GITHUB_OUTPUT
-          fi
-          echo "build=$BUILD" >> $GITHUB_OUTPUT
+          echo "new_branch=${BRANCH}-prebuilt" >> $GITHUB_OUTPUT
+          echo "version=$(date '+%Y.%m.%d')-${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "extra_version_identifier=cloudypilot" >> $GITHUB_OUTPUT
           cat $GITHUB_OUTPUT
+
+      # sunnypilot's HF dataset is public, so no credentials are needed to read it. Its pkls are only
+      # usable if they were compiled from the same ONNX with the same tinygrad; otherwise compile on device.
+      - name: Check for prebuilt driving model on HF
+        id: models
+        env:
+          HF_REPO: sunnypilot/sunnypilot_models_v1
+          HF_DEFAULTS_PATH: models/defaults/small
+        run: |
+          # lfs isn't pulled, so the onnx is still its pointer file
+          DRIVING_HASH=$(grep '^oid sha256:' openpilot/selfdrive/modeld/models/driving_supercombo.onnx | cut -d: -f2)
+          TINYGRAD_REF=$(git ls-tree HEAD tinygrad_repo | awk '{print $3}')
+          echo "Driving ONNX hash: $DRIVING_HASH"
+          echo "tinygrad ref: $TINYGRAD_REF"
+          echo "driving_onnx_sha256=$DRIVING_HASH" >> $GITHUB_OUTPUT
+          echo "tinygrad_ref=$TINYGRAD_REF" >> $GITHUB_OUTPUT
+
+          JSON_URL="https://huggingface.co/datasets/${HF_REPO}/resolve/main/${HF_DEFAULTS_PATH}/default_models.json"
+          MATCH=$(curl -fsSL "${JSON_URL}?t=$(date +%s)" | jq -r --arg hash "$DRIVING_HASH" --arg tg "$TINYGRAD_REF" '
+            . as $root | any(.bundles[]; .onnx_sha256 == $hash and (.tinygrad_ref // $root.tinygrad_ref) == $tg)
+          ' 2>/dev/null || echo false)
+
+          if [[ -n "$DRIVING_HASH" && "$MATCH" == "true" ]]; then
+            echo "Matching driving model found on HF, skipping on-device compile"
+            echo "use_hf_model=true" >> $GITHUB_OUTPUT
+          else
+            echo "No matching driving model on HF, compiling on device"
+            echo "use_hf_model=false" >> $GITHUB_OUTPUT
+          fi
 
   validate_tests:
     runs-on: ubuntu-24.04
     needs: [ prepare_strategy ]
-    if: ${{
-      ((github.event_name == 'workflow_dispatch' && inputs.wait_for_tests) ||
-      (github.event_name == 'push' && needs.prepare_strategy.outputs.is_stable_branch == 'true') ||
-      contains(github.event_name, 'pull_request') && (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))
-      }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.wait_for_tests }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - name: Wait for Tests
-        uses: ./.github/workflows/wait-for-action # Path to where you place the action
+        uses: ./.github/workflows/wait-for-action
         with:
-          workflow: tests.yaml # The workflow file to monitor
+          workflow: tests.yaml
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          should-wait-for-start: ${{ github.event_name == 'push' && 'true' || 'false' }}
+          should-wait-for-start: 'false'
 
   build:
     needs: [ validate_tests, prepare_strategy ]
     concurrency:
-      group: build-${{ github.head_ref || github.ref_name }}
+      group: build-${{ github.ref_name }}
       cancel-in-progress: false
     runs-on: [self-hosted, tici]
     if: ${{
       (always() && !cancelled() && !failure()) &&
       needs.prepare_strategy.result == 'success' &&
-      (needs.validate_tests.result == 'success' || needs.validate_tests.result == 'skipped') &&
-      (!contains(github.event_name, 'pull_request') ||
-      (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))
+      (needs.validate_tests.result == 'success' || needs.validate_tests.result == 'skipped')
       }}
     steps:
       - uses: actions/checkout@v4
@@ -126,7 +108,6 @@ jobs:
           fetch-depth: 1
           submodules: recursive
           ref: ${{ env.SOURCE_BRANCH }}
-          repository: ${{ github.event.pull_request.head.repo.fork && github.event.pull_request.head.repo.full_name || github.repository }}
       - run: git lfs pull
 
       - name: Set environment variables
@@ -474,20 +455,17 @@ jobs:
 
   publish:
     concurrency:
-      group: ${{ needs.prepare_strategy.outputs.publish_concurrency_group }}
-      cancel-in-progress: ${{ needs.prepare_strategy.outputs.cancel_publish_in_progress == 'true' }}
+      group: publish-${{ github.ref_name }}
+      cancel-in-progress: true
     if: ${{
       always() && !cancelled() &&
       needs.build.result == 'success' &&
-      needs.prepare_strategy.result == 'success' &&
-      needs.prepare_small_model.result == 'success' &&
-      needs.prepare_dm_model.result == 'success' &&
-      (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt')) &&
-      (needs.prepare_strategy.outputs.include_big_model != 'true' || needs.prepare_chestnut.result == 'success')
+      needs.prepare_strategy.result == 'success'
       }}
-    needs: [ build, prepare_strategy, prepare_chestnut, prepare_small_model, prepare_dm_model ]
+    needs: [ build, prepare_strategy ]
     runs-on: ubuntu-24.04
-    environment: ${{ needs.prepare_strategy.outputs.environment }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -511,8 +489,7 @@ jobs:
           tinygrad_ref: ${{ needs.prepare_dm_model.outputs.tinygrad_ref }}
           models: |
             [
-              {"hf_path": "models/defaults/small", "onnx_hash": "${{ needs.prepare_small_model.outputs.driving_onnx_sha256 }}", "canonical": "driving_tinygrad.pkl"},
-              {"hf_path": "models/defaults/dm", "onnx_hash": "${{ needs.prepare_dm_model.outputs.dm_onnx_sha256 }}", "canonical": "dmonitoring_model_tinygrad.pkl"}
+              {"hf_path": "models/defaults/small", "onnx_hash": "${{ needs.prepare_strategy.outputs.driving_onnx_sha256 }}", "canonical": "driving_tinygrad.pkl"}
             ]
 
       - name: Configure Git
@@ -532,7 +509,7 @@ jobs:
             "${{ env.OUTPUT_DIR }}" \
             "${{ needs.prepare_strategy.outputs.new_branch }}" \
             "${{ needs.prepare_strategy.outputs.version }}" \
-            "https://x-access-token:${{github.token}}@github.com/sunnypilot/sunnypilot.git" \
+            "https://x-access-token:${{github.token}}@github.com/CHaucke89/cloudypilot.git" \
             "${{ needs.prepare_strategy.outputs.extra_version_identifier }}"
 
       - name: Tag ${{ needs.prepare_strategy.outputs.environment }}
