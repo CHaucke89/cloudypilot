@@ -14,7 +14,7 @@ This software operates a motor vehicle. Use it only if you understand the risks,
 
 ## Installation
 
-cloudypilot's master branch can be installed using the following URL: `installer.hauckelabs.dev'
+cloudypilot's master branch can be installed using the following URL: `installer.hauckelabs.dev`
 
 ## Features and changes
 
