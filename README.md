@@ -12,6 +12,10 @@ cloudypilot includes changes to safety-critical code, including steering-angle l
 
 This software operates a motor vehicle. Use it only if you understand the risks, follow all local laws, and can maintain constant attention and control. **Install and use cloudypilot entirely at your own risk.** It is alpha-quality research software, not a product, and comes with no warranty.
 
+## Installation
+
+cloudypilot's master branch can be installed using the following URL: `installer.hauckelabs.dev'
+
 ## Features and changes
 
 ### Controls
