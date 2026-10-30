@@ -11,14 +11,22 @@ from openpilot.cloudypilot.selfdrive.ui.frame_streamer import FrameStreamer
 from openpilot.cloudypilot.selfdrive.ui.touch_injector import TouchInjector
 
 
+def _engaged() -> bool:
+  # Imported lazily so the standalone smoke test below doesn't need the full UI state.
+  from openpilot.selfdrive.ui.ui_state import ui_state
+  return ui_state.engaged
+
+
 class RemoteUI:
   def __init__(self):
-    self.injector = TouchInjector()
+    # Remote taps are ignored while engaged; local touch keeps working.
+    self.injector = TouchInjector(input_blocked=_engaged)
     self.injector.start()
     self.streamer = FrameStreamer()
     print("RemoteUI: streaming + input injection started")
 
   def stream_frame(self):
+    self.injector.refresh_blocked()
     self.streamer.stream_frame()
 
   def close(self):

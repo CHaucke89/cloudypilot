@@ -159,3 +159,17 @@ body {
     padding: 6px 10px;
   }
 }
+
+#ui-container.input-blocked::before {
+  content: "View only while engaged";
+  position: absolute;
+  top: calc(var(--safe-top) + 10px);
+  left: calc(var(--safe-left) + 10px);
+  color: #fff;
+  background: rgba(200, 40, 40, 0.85);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 100;
+  pointer-events: none;
+}

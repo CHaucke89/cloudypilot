@@ -21,14 +21,29 @@ let renderFps = 0;
 let lastRenderFpsUpdate = Date.now();
 let frameWidth = canvas.width;
 let frameHeight = canvas.height;
+let inputBlocked = false;
 
-// Optimized image rendering
-const imagePool = [];
-let currentImageIndex = 0;
+// Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4), then JPEG bytes
+const FRAME_MSG_TYPE = 1;
+const FRAME_HEADER_SIZE = 17;
 
-// Pre-create image objects for better performance
-for (let i = 0; i < 3; i++) {
-  imagePool.push(new Image());
+// Only one frame is decoded at a time; anything arriving meanwhile replaces the pending frame.
+let decoding = false;
+let pendingFrame = null;
+
+// Queueing delay = latency above the lowest latency seen recently. Device and browser clocks
+// differ by a constant offset, which cancels out, so this is a skew-free congestion signal.
+const LATENCY_BASELINE_WINDOW_MS = 10000;
+const latencySamples = [];
+let queueDelay = 0;
+
+function updateQueueDelay(now, sampleLatency) {
+  latencySamples.push({ t: now, latency: sampleLatency });
+  while (latencySamples.length && now - latencySamples[0].t > LATENCY_BASELINE_WINDOW_MS) {
+    latencySamples.shift();
+  }
+  const baseline = Math.min(...latencySamples.map(s => s.latency));
+  queueDelay = Math.max(0, sampleLatency - baseline);
 }
 
 // FPS calculation
@@ -47,7 +62,7 @@ function updateStats() {
     lastRenderFpsUpdate = now;
   }
   const bufferedAmount = ws && ws.readyState === WebSocket.OPEN ? ws.bufferedAmount : 0;
-  stats.textContent = `FPS: ${fps} | Render FPS: ${renderFps} | Frames: ${totalFrames} | Latency: ${latency}ms | Buffered: ${bufferedAmount}`;
+  stats.textContent = `FPS: ${fps} | Render FPS: ${renderFps} | Frames: ${totalFrames} | Latency: ${latency}ms | Queue: ${queueDelay}ms | Buffered: ${bufferedAmount}`;
 }
 
 function getViewportSize() {
@@ -96,43 +111,103 @@ function sendFeedback(force = false) {
   ws.send(JSON.stringify({
     type: 'feedback',
     latency_ms: latency,
+    queue_delay_ms: queueDelay,
     render_fps: renderFps,
     buffered_amount: ws.bufferedAmount,
     frame_age_ms: now - lastFrameTime,
   }));
 }
 
-function renderFrame(frameData) {
-  const img = imagePool[currentImageIndex];
-  currentImageIndex = (currentImageIndex + 1) % imagePool.length;
+function drawFrame(source, width, height) {
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    frameWidth = width;
+    frameHeight = height;
+    layoutCanvas();
+  }
 
-  img.onload = function() {
-    // Update canvas size if needed
-    if (canvas.width !== img.width || canvas.height !== img.height) {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      frameWidth = img.width;
-      frameHeight = img.height;
-      layoutCanvas();
-    }
+  ctx.drawImage(source, 0, 0);
 
-    // Draw frame
-    ctx.drawImage(img, 0, 0);
+  renderedFramesInWindow += 1;
+  lastFrameTime = Date.now();
+  frameCount++;
+  totalFrames++;
+  sendFeedback(false);
+  updateStats();
+}
 
-    renderedFramesInWindow += 1;
-    lastFrameTime = Date.now();
-    frameCount++;
-    totalFrames++;
-    sendFeedback(false);
-    updateStats();
-  };
+function decodeFrame(blob) {
+  if (window.createImageBitmap) {
+    return createImageBitmap(blob).then(bitmap => {
+      drawFrame(bitmap, bitmap.width, bitmap.height);
+      bitmap.close();
+    });
+  }
 
-  img.onerror = function() {
-    console.error('Failed to load frame');
-  };
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      drawFrame(img, img.width, img.height);
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load frame'));
+    };
+    img.src = url;
+  });
+}
 
-  // Set image source
-  img.src = 'data:image/jpeg;base64,' + frameData;
+function renderFrame(blob) {
+  if (decoding) {
+    pendingFrame = blob;
+    return;
+  }
+
+  decoding = true;
+  decodeFrame(blob)
+    .catch(err => console.error(err))
+    .finally(() => {
+      decoding = false;
+      if (pendingFrame) {
+        const next = pendingFrame;
+        pendingFrame = null;
+        renderFrame(next);
+      }
+    });
+}
+
+function handleBinaryMessage(buffer) {
+  if (buffer.byteLength <= FRAME_HEADER_SIZE) {
+    return;
+  }
+  const view = new DataView(buffer);
+  if (view.getUint8(0) !== FRAME_MSG_TYPE) {
+    return;
+  }
+
+  const timestamp = Number(view.getBigUint64(1, true));
+  const width = view.getUint32(9, true);
+  const height = view.getUint32(13, true);
+
+  const receiveTime = Date.now();
+  latency = Math.max(0, receiveTime - timestamp);
+  updateQueueDelay(receiveTime, latency);
+
+  statusIndicator.className = 'status-indicator streaming';
+  statusText.textContent = inputBlocked ? 'Streaming - view only while engaged' : 'Streaming';
+
+  renderFrame(new Blob([new Uint8Array(buffer, FRAME_HEADER_SIZE)], { type: 'image/jpeg' }));
+
+  debug.textContent = `Frame received: ${width}x${height}, ${latency}ms latency`;
+}
+
+function setInputBlocked(blocked) {
+  inputBlocked = blocked;
+  container.classList.toggle('input-blocked', blocked);
 }
 
 function connectWebSocket() {
@@ -164,20 +239,15 @@ function connectWebSocket() {
 
   ws.onmessage = (event) => {
     try {
+      if (event.data instanceof ArrayBuffer) {
+        handleBinaryMessage(event.data);
+        return;
+      }
+
       const message = JSON.parse(event.data);
 
-      if (message.type === 'frame') {
-        const receiveTime = Date.now();
-        latency = Math.max(0, receiveTime - message.timestamp);
-
-        // Update status to show streaming
-        statusIndicator.className = 'status-indicator streaming';
-        statusText.textContent = 'Streaming';
-
-        // Render frame
-        renderFrame(message.data);
-
-        debug.textContent = `Frame received: ${message.width}x${message.height}, ${latency}ms latency`;
+      if (message.type === 'status') {
+        setInputBlocked(!!message.input_blocked);
       } else if (message.type === 'stats') {
         debug.textContent = `Server stats: ${message.frames_cached} frames, ${message.memory_kb}KB`;
       }
@@ -229,6 +299,16 @@ function getDeviceCoordinates(clientX, clientY) {
 }
 
 function sendInput(eventData) {
+  if (inputBlocked) {
+    return;
+  }
+
+  // Prefer the WebSocket: one persistent, ordered connection. Fall back to HTTP while reconnecting.
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'input', event: eventData }));
+    return;
+  }
+
   fetch('/input', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -298,15 +378,15 @@ canvas.addEventListener('mouseleave', (e) => {
   dragActive = false;
 });
 
+// mousedown/mouseup already deliver the full press -> release, so click only shows the
+// indicator. Sending a 'click' here as well would make the UI see a second tap.
 canvas.addEventListener('click', (e) => {
   if (dragActive) {
     dragActive = false;
     return;
   }
-  const coords = getDeviceCoordinates(e.clientX, e.clientY);
   showTouchIndicator(e.clientX - canvas.getBoundingClientRect().left,
                     e.clientY - canvas.getBoundingClientRect().top);
-  sendInput({ type: 'click', x: coords.x, y: coords.y });
 });
 
 canvas.addEventListener('wheel', (e) => {

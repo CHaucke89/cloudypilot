@@ -3,8 +3,9 @@
 Replaces the ``RemoteUIClientConnected`` param. Param writes go through a
 tmp file + fsync + rename, which is far too heavy to do from the streaming
 path. Instead, ``stream_server`` owns a tiny POSIX shared memory segment at
-``/dev/shm/openpilot_ui_clients`` holding the current WebSocket client count,
-and the UI maps it read-only. Reads are a plain memory access, no syscalls.
+``/dev/shm/openpilot_ui_clients`` holding the current WebSocket client count
+and the worst network queueing delay reported by those clients, and the UI
+maps it read-only. Reads are a plain memory access, no syscalls.
 
 The writer never unlinks the segment: a reader's mmap is bound to the inode,
 so recreating the file would leave readers looking at a stale copy forever.
@@ -15,12 +16,12 @@ import os
 import struct
 
 SHM_PATH = "/dev/shm/openpilot_ui_clients"
-STATE_FMT = "<I"  # uint32 client count
+STATE_FMT = "<II"  # uint32 client count, uint32 worst client queue delay (ms)
 STATE_SIZE = struct.calcsize(STATE_FMT)
 
 
 class ClientStateWriter:
-  """Owned by stream_server. Publishes the number of connected browsers."""
+  """Owned by stream_server. Publishes the number of connected browsers and their network delay."""
 
   def __init__(self):
     fd = os.open(SHM_PATH, os.O_RDWR | os.O_CREAT, 0o644)
@@ -31,12 +32,17 @@ class ClientStateWriter:
     finally:
       os.close(fd)
     self.set_client_count(0)
+    self.set_network_delay_ms(0)
 
   def set_client_count(self, count: int) -> None:
-    struct.pack_into(STATE_FMT, self._map, 0, max(0, count))
+    struct.pack_into("<I", self._map, 0, max(0, count))
+
+  def set_network_delay_ms(self, delay_ms: float) -> None:
+    struct.pack_into("<I", self._map, 4, max(0, min(int(delay_ms), 0xFFFFFFFF)))
 
   def close(self) -> None:
     self.set_client_count(0)
+    self.set_network_delay_ms(0)
     self._map.close()
 
 
@@ -64,7 +70,14 @@ class ClientStateReader:
     if self._map is None and not self._open():
       return False
     assert self._map is not None
-    return struct.unpack_from(STATE_FMT, self._map, 0)[0] > 0
+    return struct.unpack_from("<I", self._map, 0)[0] > 0
+
+  def network_delay_ms(self) -> int:
+    """Worst queueing delay reported by connected browsers, 0 if unknown."""
+    if self._map is None and not self._open():
+      return 0
+    assert self._map is not None
+    return struct.unpack_from("<I", self._map, 4)[0]
 
   def close(self) -> None:
     if self._map is not None:

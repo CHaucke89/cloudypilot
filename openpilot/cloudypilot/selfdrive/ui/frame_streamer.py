@@ -39,6 +39,8 @@ ADAPT_RECOVER_S = 2.0
 ADAPT_HIGH_PRESSURE = 1.1
 ADAPT_LOW_PRESSURE = 0.6
 JPEG_SIZE_BUDGET_AT_10_FPS = 220_000
+# Queueing delay browsers can see before the link counts as congested.
+NETWORK_DELAY_BUDGET_MS = 250.0
 
 
 class FrameStreamer:
@@ -90,6 +92,7 @@ class FrameStreamer:
     encode_pressure = max(
       encode_ms / max(frame_budget_ms, 1.0),
       jpeg_size / max(float(self._jpeg_size_budget()), 1.0),
+      self.client_state.network_delay_ms() / NETWORK_DELAY_BUDGET_MS,
     )
     self.encode_pressure_ewma = (ADAPT_DECAY * self.encode_pressure_ewma) + ((1.0 - ADAPT_DECAY) * encode_pressure)
     pressure = self.encode_pressure_ewma

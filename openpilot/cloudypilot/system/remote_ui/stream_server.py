@@ -33,9 +33,97 @@ FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes
 METADATA_SIZE = 31  # Packed struct metadata
 SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE  # Total size
 
+TOUCH_SOCKET_PATH = '/tmp/ui_touch_socket'
+
+# Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4), then JPEG bytes
+FRAME_MSG_TYPE = 1
+FRAME_HEADER_FMT = '<BQII'
+
+# Client feedback older than this no longer counts towards the published network delay
+FEEDBACK_STALE_S = 3.0
+
 websocket_clients = set()
 clients_lock = threading.Lock()
 client_state: ClientStateWriter | None = None
+client_feedback: dict[int, tuple[float, float]] = {}  # client id -> (monotonic time, queue delay ms)
+
+
+def publish_network_delay():
+  """Publish the worst fresh client queue delay so the UI can back off. Caller holds clients_lock."""
+  now = time.monotonic()
+  for cid in [cid for cid, (t, _) in client_feedback.items() if now - t > FEEDBACK_STALE_S]:
+    del client_feedback[cid]
+  if client_state is not None:
+    client_state.set_network_delay_ms(max((d for _, d in client_feedback.values()), default=0))
+
+
+class InputForwarder:
+  """Keeps one connection to the UI's touch injector and streams newline-delimited JSON over it."""
+
+  def __init__(self, path=TOUCH_SOCKET_PATH):
+    self.path = path
+    self.sock = None
+    self.lock = threading.Lock()
+
+  def _connect(self):
+    self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    self.sock.settimeout(0.5)
+    self.sock.connect(self.path)
+
+  def _close(self):
+    if self.sock is not None:
+      try:
+        self.sock.close()
+      except OSError:
+        pass
+      self.sock = None
+
+  def send(self, event: dict):
+    payload = (json.dumps({**event, 'timestamp': time.monotonic()}) + '\n').encode()
+    with self.lock:
+      # Retry once with a fresh connection in case the UI restarted.
+      for attempt in range(2):
+        try:
+          if self.sock is None:
+            self._connect()
+          assert self.sock is not None
+          self.sock.sendall(payload)
+          return
+        except OSError:
+          self._close()
+          if attempt:
+            raise
+
+
+input_forwarder = InputForwarder()
+
+
+class DriveState:
+  """Tracks whether openpilot is engaged so remote input can be refused while driving."""
+
+  def __init__(self):
+    self.engaged = False
+
+  def start(self):
+    try:
+      import cereal.messaging as messaging
+    except ImportError as e:
+      # The UI process applies the same gate, so this only costs the browser banner.
+      print(f"DriveState: cereal unavailable, not gating input here: {e}")
+      return
+
+    def loop():
+      sm = messaging.SubMaster(['deviceState', 'selfdriveState', 'selfdriveStateSP'])
+      while True:
+        sm.update(200)
+        self.engaged = bool(
+          sm['deviceState'].started and (sm['selfdriveState'].enabled or sm['selfdriveStateSP'].mads.enabled)
+        )
+
+    threading.Thread(target=loop, daemon=True).start()
+
+
+drive_state = DriveState()
 
 
 # Frame cache for efficient streaming
@@ -49,7 +137,9 @@ class FrameCache:
   def add_frame(self, timestamp: int, data: bytes, width: int, height: int):
     with self.lock:
       if timestamp > self.latest_timestamp:
-        frame_info = {'timestamp': timestamp, 'data': data, 'size': len(data), 'width': width, 'height': height}
+        # Pack the WebSocket message once here instead of once per client.
+        packet = struct.pack(FRAME_HEADER_FMT, FRAME_MSG_TYPE, timestamp, width, height) + data
+        frame_info = {'timestamp': timestamp, 'data': data, 'packet': packet, 'size': len(data), 'width': width, 'height': height}
         self.frames.append(frame_info)
         self.latest_timestamp = timestamp
         self.latest_frame = frame_info
@@ -246,28 +336,57 @@ def remote_ui_manifest():
   return send_from_directory(os.path.dirname(__file__), 'remote_ui.webmanifest')
 
 
+def forward_input(event) -> bool:
+  """Forward one input event to the UI. Returns False if it was dropped."""
+  if not isinstance(event, dict) or drive_state.engaged:
+    return False
+  try:
+    input_forwarder.send(event)
+    return True
+  except OSError as e:
+    print(f"Failed to send input event: {e}")
+    return False
+
+
 @app.route('/input', methods=['POST'])
 def handle_input():
-  """Handle input events from web client"""
-  data = request.get_json()
-  event_type = data.get('type', 'click')
-  print(f"Received {event_type} event: {data}")
+  """Handle input events from web client (fallback for when the WebSocket is down)"""
+  data = request.get_json(silent=True)
+  if drive_state.engaged:
+    return jsonify({'status': 'blocked', 'message': 'Remote input is disabled while engaged'}), 409
+  if not forward_input(data):
+    return jsonify({'status': 'error', 'message': 'Failed to send input event'}), 500
+  return jsonify({'status': 'success'})
 
-  # Send to Qt application via Unix socket
+
+def handle_client_message(ws, client_id, data):
   try:
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-      sock.connect('/tmp/ui_touch_socket')
-      message = json.dumps({**data, 'timestamp': time.monotonic()})
-      sock.send(message.encode())
-      return jsonify({'status': 'success'})
-  except Exception as e:
-    print(f"Failed to send input event: {e}")
-    return jsonify({'status': 'error', 'message': str(e)}), 500
+    msg = json.loads(data)
+  except (json.JSONDecodeError, TypeError):
+    return
+  if not isinstance(msg, dict):
+    return
+
+  msg_type = msg.get('type')
+  if msg_type == 'input':
+    forward_input(msg.get('event'))
+  elif msg_type == 'feedback':
+    try:
+      queue_delay = max(0.0, float(msg.get('queue_delay_ms', 0)))
+    except (TypeError, ValueError):
+      return
+    with clients_lock:
+      client_feedback[client_id] = (time.monotonic(), queue_delay)
+      publish_network_delay()
+  elif msg_type == 'request_frame':
+    latest = frame_cache.get_latest()
+    if latest:
+      ws.send(latest['packet'])
 
 
 @sock.route('/stream')
 def stream(ws):
-  """WebSocket endpoint for real-time frame streaming"""
+  """WebSocket endpoint for real-time frame streaming and input"""
   client_id = id(ws)
   print(f"Client {client_id} connected")
 
@@ -282,41 +401,25 @@ def stream(ws):
   try:
     last_sent_timestamp = 0
     last_stats_sent = 0.0
+    input_blocked = None
 
     # Send current frame immediately if available
     latest = frame_cache.get_latest()
     if latest:
-      initial_msg = json.dumps(
-        {
-          'type': 'frame',
-          'timestamp': latest['timestamp'],
-          'width': latest['width'],
-          'height': latest['height'],
-          'format': 'jpeg',
-          'data': base64.b64encode(latest['data']).decode('utf-8'),
-        }
-      )
-      ws.send(initial_msg)
+      ws.send(latest['packet'])
       last_sent_timestamp = latest['timestamp']
       print(f"Sent initial frame to client {client_id}")
 
     # Main streaming loop
     while True:
       try:
+        if drive_state.engaged != input_blocked:
+          input_blocked = drive_state.engaged
+          ws.send(json.dumps({'type': 'status', 'input_blocked': input_blocked}))
+
         latest = frame_cache.get_latest()
         if latest and latest['timestamp'] > last_sent_timestamp:
-          ws.send(
-            json.dumps(
-              {
-                'type': 'frame',
-                'timestamp': latest['timestamp'],
-                'width': latest['width'],
-                'height': latest['height'],
-                'format': 'jpeg',
-                'data': base64.b64encode(latest['data']).decode('utf-8'),
-              }
-            )
-          )
+          ws.send(latest['packet'])
           last_sent_timestamp = latest['timestamp']
         elif (time.monotonic() - last_stats_sent) >= 5.0:
           stats = frame_cache.get_stats()
@@ -326,43 +429,23 @@ def stream(ws):
         print(f"Error sending to client {client_id}: {e}")
         break
 
-      # Check for client messages (like frame requests)
-      try:
+      # Wait for client messages (input, feedback, frame requests) instead of sleeping, so
+      # input is forwarded as soon as it arrives. Then drain anything else already queued.
+      data = ws.receive(timeout=0.02)
+      while data:
+        handle_client_message(ws, client_id, data)
         data = ws.receive(timeout=0)
-      except Exception:
-        data = None
-
-      if data:
-        try:
-          msg = json.loads(data)
-          if msg.get('type') == 'request_frame':
-            latest = frame_cache.get_latest()
-            if latest:
-              ws.send(
-                json.dumps(
-                  {
-                    'type': 'frame',
-                    'timestamp': latest['timestamp'],
-                    'width': latest['width'],
-                    'height': latest['height'],
-                    'format': 'jpeg',
-                    'data': base64.b64encode(latest['data']).decode('utf-8'),
-                  }
-                )
-              )
-        except (json.JSONDecodeError, TypeError):
-          pass
-
-      time.sleep(0.03)
 
   except Exception as e:
     print(f"Client {client_id} error: {e}")
   finally:
     with clients_lock:
       websocket_clients.discard(ws)
+      client_feedback.pop(client_id, None)
       client_count = len(websocket_clients)
       if client_state is not None:
         client_state.set_client_count(client_count)
+      publish_network_delay()
     print(f"Client {client_id} disconnected. Total clients: {client_count}")
 
 
@@ -433,6 +516,7 @@ def main() -> None:
 
   # Start shared memory monitoring
   shm_reader.start_monitoring()
+  drive_state.start()
 
   # Run Flask with WebSocket support
   try:
