@@ -6,6 +6,9 @@ objects. raylib has no event queue to post into: input is *polled* every frame
 (``is_mouse_button_pressed`` etc.). So instead we monkeypatch pyray's input
 functions to report remote state, falling back to the real functions when no
 remote client is active.
+
+Clients may either send a single JSON object per connection (legacy) or keep
+a connection open and stream newline-delimited JSON objects.
 """
 
 import json
@@ -29,7 +32,10 @@ MOUSE_BUTTON_LEFT = 0
 
 
 class TouchInjector:
-  def __init__(self):
+  def __init__(self, input_blocked=None):
+    # Optional callable; while it returns True remote input is dropped and
+    # local touch stays in control (e.g. while engaged).
+    self._input_blocked = input_blocked or (lambda: False)
     self.running = False
     self.thread = None
     self._lock = threading.Lock()
@@ -81,29 +87,45 @@ class TouchInjector:
         os.remove(SOCKET_PATH)
 
   def _accept_loop(self):
-    while self.running:
-      # 1s timeout so we can notice self.running going False.
-      ready, _, _ = select.select([self.server], [], [], 1.0)
-      if not ready:
-        continue
-      try:
-        client, _ = self.server.accept()
-      except OSError:
-        continue
-      try:
-        chunks = []
-        client.settimeout(0.5)
-        while True:
-          data = client.recv(4096)
-          if not data:
-            break
-          chunks.append(data)
-      except (TimeoutError, OSError):
-        pass
-      finally:
+    clients: dict[socket.socket, bytearray] = {}
+    try:
+      while self.running:
+        # 1s timeout so we can notice self.running going False.
+        ready, _, _ = select.select([self.server, *clients], [], [], 1.0)
+        for s in ready:
+          if s is self.server:
+            try:
+              client, _ = self.server.accept()
+            except OSError:
+              continue
+            client.setblocking(False)
+            clients[client] = bytearray()
+            continue
+
+          try:
+            data = s.recv(4096)
+          except BlockingIOError:
+            continue
+          except OSError:
+            data = b""
+
+          buf = clients[s]
+          if data:
+            buf.extend(data)
+            *lines, rest = buf.split(b"\n")
+            clients[s] = bytearray(rest)
+            for line in lines:
+              if line.strip():
+                self._process_message(bytes(line))
+          else:
+            # EOF: a legacy one-shot client sends a single object without a newline.
+            if buf.strip():
+              self._process_message(bytes(buf))
+            del clients[s]
+            s.close()
+    finally:
+      for client in clients:
         client.close()
-      if chunks:
-        self._process_message(b"".join(chunks))
 
   def _process_message(self, raw):
     try:
@@ -111,8 +133,13 @@ class TouchInjector:
     except (json.JSONDecodeError, UnicodeDecodeError):
       return
 
+    if not isinstance(msg, dict):
+      return
+
     msg_type = msg.get("type", "click")
     now = time.monotonic()
+    if self._is_blocked():
+      return
     with self._lock:
       self._last_msg_time = now
       if "x" in msg and "y" in msg:
@@ -150,6 +177,29 @@ class TouchInjector:
     """Advance the tap auto-release timer."""
     if self._down and self._down_until is not None and now >= self._down_until:
       self._release()
+
+  def refresh_blocked(self):
+    """Called once per frame so a press in progress is dropped as soon as the gate closes."""
+    self._is_blocked()
+
+  def _is_blocked(self):
+    try:
+      blocked = bool(self._input_blocked())
+    except Exception:
+      blocked = False
+    if blocked:
+      with self._lock:
+        self._drop_remote_state()
+    return blocked
+
+  def _drop_remote_state(self):
+    # Hand control straight back to local input and forget any held press.
+    self._last_msg_time = 0.0
+    self._down = False
+    self._down_until = None
+    self._need_release = False
+    self._pressed_consumed = True
+    self._wheel = 0.0
 
   def _remote_active(self, now):
     return (now - self._last_msg_time) < REMOTE_TIMEOUT_S
