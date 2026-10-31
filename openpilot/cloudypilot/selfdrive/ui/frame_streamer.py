@@ -205,6 +205,8 @@ class FrameStreamer:
           return
         job = self._pending
         self._pending = None
+        if job is None:
+          continue
         self._encoding = True
       try:
         self._encode(*job)

@@ -524,8 +524,6 @@ class SelfdriveD:
     if CS.gearShifter == car.CarState.GearShifter.park and self.mads.enabled:
       self.events.remove(EventName.canBusMissing)
 
-    CruiseHelper.update(self, CS, self.events_sp, self.experimental_mode)
-
     # track gapAdjustCruise hold duration; long-hold triggers a soft reboot and suppresses the short-press action below
     GAP_ADJUST_LONG_PRESS = int(2. / DT_CTRL)  # 2.0s
     was_long_press = self.gap_adjust_cruise_timer >= GAP_ADJUST_LONG_PRESS
@@ -542,11 +540,9 @@ class SelfdriveD:
     # decrement personality on distance button press
     if self.CP.openpilotLongitudinalControl:
       if not was_long_press and any(not be.pressed and be.type == ButtonType.gapAdjustCruise for be in CS.buttonEvents):
-        if not self.experimental_mode_switched:
-          self.personality = (self.personality - 1) % 3
-          self.params.put('LongitudinalPersonality', self.personality)
-          self.events.add(EventName.personalityChanged)
-        self.experimental_mode_switched = False
+        self.personality = (self.personality - 1) % 3
+        self.params.put('LongitudinalPersonality', self.personality)
+        self.events.add(EventName.personalityChanged)
 
     self.icbm.run(CS, self.sm['carControl'], self.sm['longitudinalPlanSP'], self.is_metric)
 

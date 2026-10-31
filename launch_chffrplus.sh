@@ -57,10 +57,10 @@ function override_touch_count {
     echo "touch_count entry not found in mtab"
     if [ ! -f "$FAKE_TOUCH_COUNT" ]; then
       echo "Dummy touch_count not found, creating"
-      echo -e "0" > $FAKE_TOUCH_COUNT
+      echo -e "0" > "$FAKE_TOUCH_COUNT"
     fi
     echo "Bind mounting dummy touch_count"
-    sudo mount --bind -o ro $FAKE_TOUCH_COUNT $TOUCH_COUNT
+    sudo mount --bind -o ro "$FAKE_TOUCH_COUNT" "$TOUCH_COUNT"
   fi
 }
 
