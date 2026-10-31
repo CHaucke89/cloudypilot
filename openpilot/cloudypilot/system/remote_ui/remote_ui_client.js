@@ -21,11 +21,15 @@ let renderFps = 0;
 let lastRenderFpsUpdate = Date.now();
 let frameWidth = canvas.width;
 let frameHeight = canvas.height;
+// The UI's real resolution. Frames may arrive downscaled, but input is always in these coordinates.
+let deviceWidth = canvas.width;
+let deviceHeight = canvas.height;
 let inputBlocked = false;
 
-// Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4), then JPEG bytes
+// Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4) + source width(2) +
+// source height(2), then JPEG bytes
 const FRAME_MSG_TYPE = 1;
-const FRAME_HEADER_SIZE = 17;
+const FRAME_HEADER_SIZE = 21;
 
 // Only one frame is decoded at a time; anything arriving meanwhile replaces the pending frame.
 let decoding = false;
@@ -62,7 +66,7 @@ function updateStats() {
     lastRenderFpsUpdate = now;
   }
   const bufferedAmount = ws && ws.readyState === WebSocket.OPEN ? ws.bufferedAmount : 0;
-  stats.textContent = `FPS: ${fps} | Render FPS: ${renderFps} | Frames: ${totalFrames} | Latency: ${latency}ms | Queue: ${queueDelay}ms | Buffered: ${bufferedAmount}`;
+  stats.textContent = `FPS: ${fps} | Render FPS: ${renderFps} | Frames: ${totalFrames} | Latency: ${latency}ms | Queue: ${queueDelay}ms | Res: ${frameWidth}x${frameHeight} | Buffered: ${bufferedAmount}`;
 }
 
 function getViewportSize() {
@@ -192,6 +196,13 @@ function handleBinaryMessage(buffer) {
   const timestamp = Number(view.getBigUint64(1, true));
   const width = view.getUint32(9, true);
   const height = view.getUint32(13, true);
+  const sourceWidth = view.getUint16(17, true) || width;
+  const sourceHeight = view.getUint16(19, true) || height;
+  if (sourceWidth !== deviceWidth || sourceHeight !== deviceHeight) {
+    deviceWidth = sourceWidth;
+    deviceHeight = sourceHeight;
+    sendView();
+  }
 
   const receiveTime = Date.now();
   latency = Math.max(0, receiveTime - timestamp);
@@ -232,6 +243,9 @@ function connectWebSocket() {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
+
+    lastSentViewWidth = null;  // a new connection starts with no request on the server
+    sendView();
 
     // Request initial frame
     ws.send(JSON.stringify({ type: 'request_frame' }));
@@ -290,8 +304,8 @@ setInterval(() => {
 // Touch/click handling
 function getDeviceCoordinates(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
+  const scaleX = deviceWidth / rect.width;
+  const scaleY = deviceHeight / rect.height;
   return {
     x: Math.round((clientX - rect.left) * scaleX),
     y: Math.round((clientY - rect.top) * scaleY)
@@ -487,8 +501,71 @@ document.addEventListener('paste', (e) => {
   }
 });
 
+// Resolution. Every browser shares one encode, so the device uses the widest width any
+// connected client asks for, and sends half resolution when that is small enough. Auto asks
+// for the canvas's on-screen size, counting at most 1.5 device pixels per CSS pixel: past
+// that, phones' 3x screens add bytes but little legibility.
+const resToggle = document.getElementById('res-toggle');
+const RES_MODES = [
+  { id: 'auto', label: 'Auto' },
+  { id: 'full', label: 'Full', scale: 1 },
+  { id: 'half', label: 'Half', scale: 0.5 },
+];
+const AUTO_MAX_PIXEL_RATIO = 1.5;
+let resMode = RES_MODES[0];
+let lastSentViewWidth = null;
+let viewTimer = null;
+
+try {
+  resMode = RES_MODES.find(m => m.id === localStorage.getItem('remoteUiRes')) || resMode;
+} catch (e) {
+  // storage unavailable (private mode); keep the default
+}
+
+function requestedViewWidth() {
+  if (resMode.scale) {
+    return Math.round(deviceWidth * resMode.scale);
+  }
+  const cssWidth = canvas.getBoundingClientRect().width || getViewportSize().width;
+  return Math.round(cssWidth * Math.min(window.devicePixelRatio || 1, AUTO_MAX_PIXEL_RATIO));
+}
+
+function sendView() {
+  resToggle.textContent = `Res: ${resMode.label}`;
+  const width = requestedViewWidth();
+  if (!ws || ws.readyState !== WebSocket.OPEN || !width) {
+    return;
+  }
+  if (width !== lastSentViewWidth) {
+    ws.send(JSON.stringify({ type: 'view', width }));
+    lastSentViewWidth = width;
+  }
+}
+
+function scheduleSendView() {
+  clearTimeout(viewTimer);
+  viewTimer = setTimeout(sendView, 300);
+}
+
+resToggle.addEventListener('click', () => {
+  resMode = RES_MODES[(RES_MODES.indexOf(resMode) + 1) % RES_MODES.length];
+  try {
+    localStorage.setItem('remoteUiRes', resMode.id);
+  } catch (e) {
+    // not persisted; still applies to this session
+  }
+  sendView();
+});
+
+window.addEventListener('resize', scheduleSendView);
+window.addEventListener('orientationchange', scheduleSendView);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', scheduleSendView);
+}
+
 // Start WebSocket connection
 layoutCanvas();
+sendView();
 connectWebSocket();
 
 // Update stats periodically
