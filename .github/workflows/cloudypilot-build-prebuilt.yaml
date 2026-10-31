@@ -118,6 +118,7 @@ jobs:
       UV_PROJECT_ENVIRONMENT: /data/cloudypilot-ci/venv
       VIRTUAL_ENV: /data/cloudypilot-ci/venv
       UV_PYTHON_PREFERENCE: managed
+      UV_PYTHON_DOWNLOADS: automatic
       UV_PYTHON_INSTALL_DIR: /data/cloudypilot-ci/uv/python
       UV_CACHE_DIR: /data/cloudypilot-ci/uv/cache
     steps:
@@ -140,7 +141,10 @@ jobs:
       - name: Set environment variables
         run: |
           # Set up common environment
+          # AGNOS's profile overrides UV_* (e.g. UV_PYTHON_PREFERENCE=only-system), so restore the job's values after sourcing it
+          JOB_UV_ENV=$(export -p | grep -E '^declare -x UV_[A-Z_]+=')
           source /etc/profile;
+          eval "$JOB_UV_ENV"
           # profile points this at the system venv; printenv below would carry that into later steps
           export VIRTUAL_ENV=$UV_PROJECT_ENVIRONMENT
           export TMPDIR=${CI_ROOT}/tmp
