@@ -35,9 +35,10 @@ SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE  # Total size
 
 TOUCH_SOCKET_PATH = '/tmp/ui_touch_socket'
 
-# Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4), then JPEG bytes
+# Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4) + source width(2) + source height(2),
+# then JPEG bytes. Source size is the UI's real resolution, which input coordinates are in.
 FRAME_MSG_TYPE = 1
-FRAME_HEADER_FMT = '<BQII'
+FRAME_HEADER_FMT = '<BQIIHH'
 
 # Client feedback older than this no longer counts towards the published network delay
 FEEDBACK_STALE_S = 3.0
@@ -46,6 +47,13 @@ websocket_clients = set()
 clients_lock = threading.Lock()
 client_state: ClientStateWriter | None = None
 client_feedback: dict[int, tuple[float, float]] = {}  # client id -> (monotonic time, queue delay ms)
+client_view_widths: dict[int, int] = {}  # client id -> frame width the browser wants
+
+
+def publish_requested_width():
+  """One encode is shared by every client, so the widest request wins. Caller holds clients_lock."""
+  if client_state is not None:
+    client_state.set_requested_width(max(client_view_widths.values(), default=0))
 
 
 def publish_network_delay():
@@ -134,11 +142,12 @@ class FrameCache:
     self.latest_timestamp = 0
     self.latest_frame = None
 
-  def add_frame(self, timestamp: int, data: bytes, width: int, height: int):
+  def add_frame(self, timestamp: int, data: bytes, width: int, height: int, source_width: int = 0, source_height: int = 0):
     with self.lock:
       if timestamp > self.latest_timestamp:
         # Pack the WebSocket message once here instead of once per client.
-        packet = struct.pack(FRAME_HEADER_FMT, FRAME_MSG_TYPE, timestamp, width, height) + data
+        packet = struct.pack(FRAME_HEADER_FMT, FRAME_MSG_TYPE, timestamp, width, height,
+                             source_width or width, source_height or height) + data
         frame_info = {'timestamp': timestamp, 'data': data, 'packet': packet, 'size': len(data), 'width': width, 'height': height}
         self.frames.append(frame_info)
         self.latest_timestamp = timestamp
@@ -217,8 +226,9 @@ class SharedMemoryReader:
       format_type = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
       ready = struct.unpack('B', self.shm_map.read(1))[0]  # uint8_t
 
-      # Skip 6 bytes of padding
-      self.shm_map.read(6)
+      # Source (pre-scaling) size, then 2 bytes of padding. Zero from writers that predate scaling.
+      source_width, source_height = struct.unpack('<HH', self.shm_map.read(4))
+      self.shm_map.read(2)
 
       if ready == 0 or size == 0 or timestamp <= self.last_timestamp:
         return None
@@ -228,7 +238,8 @@ class SharedMemoryReader:
 
       self.last_timestamp = timestamp
 
-      return {'timestamp': timestamp, 'width': width, 'height': height, 'size': size, 'format': 'jpeg' if format_type == 1 else 'raw', 'data': frame_data}
+      return {'timestamp': timestamp, 'width': width, 'height': height, 'source_width': source_width, 'source_height': source_height,
+              'size': size, 'format': 'jpeg' if format_type == 1 else 'raw', 'data': frame_data}
     except Exception as e:
       print(f"Error reading frame: {e}")
       return None
@@ -256,7 +267,8 @@ class SharedMemoryReader:
         if frame:
           frame_count += 1
           # Add to cache
-          if frame_cache.add_frame(frame['timestamp'], frame['data'], frame['width'], frame['height']):
+          if frame_cache.add_frame(frame['timestamp'], frame['data'], frame['width'], frame['height'],
+                                   frame['source_width'], frame['source_height']):
             # Debug: Check if frame data is valid JPEG
             if frame_count % 10 == 0:
               # Check JPEG header
@@ -308,6 +320,7 @@ HTML_PAGE = """
       FPS: 0 | Frames: 0 | Latency: 0ms
     </div>
     <div id="debug"></div>
+    <button id="res-toggle" type="button" title="Stream resolution">Res: Auto</button>
   </div>
 
   <script src="/remote_ui.js"></script>
@@ -378,6 +391,14 @@ def handle_client_message(ws, client_id, data):
     with clients_lock:
       client_feedback[client_id] = (time.monotonic(), queue_delay)
       publish_network_delay()
+  elif msg_type == 'view':
+    try:
+      width = max(0, int(msg.get('width', 0)))
+    except (TypeError, ValueError):
+      return
+    with clients_lock:
+      client_view_widths[client_id] = width
+      publish_requested_width()
   elif msg_type == 'request_frame':
     latest = frame_cache.get_latest()
     if latest:
@@ -442,10 +463,12 @@ def stream(ws):
     with clients_lock:
       websocket_clients.discard(ws)
       client_feedback.pop(client_id, None)
+      client_view_widths.pop(client_id, None)
       client_count = len(websocket_clients)
       if client_state is not None:
         client_state.set_client_count(client_count)
       publish_network_delay()
+      publish_requested_width()
     print(f"Client {client_id} disconnected. Total clients: {client_count}")
 
 

@@ -22,7 +22,8 @@ FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes (max 1080p RGBA)
 METADATA_SIZE = 31
 SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE
 
-HEADER_FMT = "<QIIIIB6x"
+# timestamp, width, height, size, format, ready, source width, source height (frame size before scaling)
+HEADER_FMT = "<QIIIIBHH2x"
 
 FORMAT_JPEG = 1
 JPEG_QUALITY = 85
@@ -39,6 +40,12 @@ ADAPT_RECOVER_S = 2.0
 ADAPT_HIGH_PRESSURE = 1.1
 ADAPT_LOW_PRESSURE = 0.6
 JPEG_SIZE_BUDGET_AT_10_FPS = 220_000
+# Encode scales offered to browsers. Only 0.5 is offered below full: it's an exact 2x2 box
+# reduce, which with the smaller encode costs less than encoding full size. Any other
+# smooth resize (e.g. 0.75 bilinear or box) costs more CPU than the encode it saves.
+SCALE_STEPS = (0.5, 1.0)
+# The browser may upscale by up to this much rather than get the next larger step.
+MAX_BROWSER_UPSCALE = 1.33
 # Queueing delay browsers can see before the link counts as congested.
 NETWORK_DELAY_BUDGET_MS = 250.0
 
@@ -54,6 +61,7 @@ class FrameStreamer:
     self.jpeg_quality = JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
     self.last_adapt_time = 0.0
+    self.scale = 1.0
     self._init_shm()
 
   def _set_frame_rate(self, frame_rate):
@@ -80,6 +88,15 @@ class FrameStreamer:
       self._set_connected_defaults()
     else:
       self._set_disconnected_mode()
+
+  def _pick_scale(self, width):
+    requested = self.client_state.requested_width() if self.client_connected else 0
+    if requested <= 0:
+      return 1.0
+    for scale in SCALE_STEPS:
+      if width * scale * MAX_BROWSER_UPSCALE >= requested:
+        return scale
+    return 1.0
 
   def _jpeg_size_budget(self):
     return int(JPEG_SIZE_BUDGET_AT_10_FPS * (FRAME_RATE_LIMIT / float(self.target_frame_rate)))
@@ -171,7 +188,12 @@ class FrameStreamer:
 
       # load_image_from_screen already returns top-to-bottom orientation.
       pil_img = Image.frombuffer("RGBA", (width, height), rgba, "raw", "RGBA", 0, 1)
+
       pil_img = pil_img.convert("RGB")  # JPEG has no alpha channel
+      # Reducing after the conversion is faster than before it (3 channels instead of 4).
+      self.scale = self._pick_scale(width)
+      if self.scale != 1.0:
+        pil_img = pil_img.reduce(round(1 / self.scale))
 
       with io.BytesIO() as out:
         pil_img.save(out, format="JPEG", quality=self.jpeg_quality)
@@ -188,11 +210,13 @@ class FrameStreamer:
       header = struct.pack(
         HEADER_FMT,
         int(time.clock_gettime(time.CLOCK_REALTIME) * 1000),  # epoch timestamp (ms)
-        width,
-        height,
+        pil_img.width,
+        pil_img.height,
         len(jpeg),
         FORMAT_JPEG,
         1,  # ready
+        width,
+        height,
       )
       shm_buf[0:METADATA_SIZE] = header
       self._update_adaptive_rate(now_mono, encode_ms, len(jpeg))
