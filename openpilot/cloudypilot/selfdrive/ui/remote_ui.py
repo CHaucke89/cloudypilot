@@ -25,8 +25,12 @@ class RemoteUI:
     self.streamer = FrameStreamer()
     print("RemoteUI: streaming + input injection started")
 
-  def stream_frame(self):
+  def update(self):
+    """Call once per rendered frame, whether or not a browser is connected."""
     self.injector.refresh_blocked()
+    self.injector.end_frame()
+
+  def stream_frame(self):
     self.streamer.stream_frame()
 
   def close(self):
@@ -55,6 +59,7 @@ if __name__ == "__main__":
       if pr.is_mouse_button_pressed(0):  # noqa: TID251
         p = pr.get_mouse_position()
         print(f"click at ({p.x:.0f}, {p.y:.0f})")
+      injector.end_frame()
       streamer.stream_frame()
       pr.end_drawing()
   finally:

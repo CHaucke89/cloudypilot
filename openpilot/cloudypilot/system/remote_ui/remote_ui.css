@@ -173,3 +173,38 @@ body {
   z-index: 100;
   pointer-events: none;
 }
+
+#kbd-toggle {
+  position: absolute;
+  bottom: calc(var(--safe-bottom) + 56px);
+  right: calc(var(--safe-right) + 10px);
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.8);
+  font-size: 22px;
+  line-height: 44px;
+  padding: 0;
+  cursor: pointer;
+  z-index: 100;
+}
+
+#kbd-toggle.active {
+  background: rgba(255, 162, 0, 0.9);
+}
+
+/* Off-screen but focusable, so phones open their on-screen keyboard for it */
+#kbd-input {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px; /* below 16px iOS zooms the page on focus */
+  pointer-events: none;
+}

@@ -48,8 +48,10 @@ def main():
         remote.close()
         remote = None
 
-      if remote is not None and ui_state.remote_ui_client_connected:
-        remote.stream_frame()
+      if remote is not None:
+        remote.update()
+        if ui_state.remote_ui_client_connected:
+          remote.stream_frame()
 
       extra_cpu = time.monotonic() - extra_start
       msg = messaging.new_message('uiDebug')

@@ -307,6 +307,9 @@ HTML_PAGE = """
       FPS: 0 | Frames: 0 | Latency: 0ms
     </div>
     <div id="debug"></div>
+    <button id="kbd-toggle" type="button" aria-label="Show keyboard" title="Keyboard">&#9000;</button>
+    <input id="kbd-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+           spellcheck="false" enterkeyhint="done" aria-label="Remote keyboard">
   </div>
 
   <script src="/remote_ui.js"></script>

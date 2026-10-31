@@ -436,6 +436,114 @@ canvas.addEventListener('touchcancel', (e) => {
   }
 }, { passive: false });
 
+// Keyboard input. Desktop keys are forwarded from document keydown/keyup. Phones have no
+// key events worth using (Android reports most keys as 'Unidentified'), so the keyboard
+// button focuses a hidden input and what the on-screen keyboard types is diffed against
+// a fixed sentinel value.
+const kbdToggle = document.getElementById('kbd-toggle');
+const kbdInput = document.getElementById('kbd-input');
+const KBD_SENTINEL = '  ';
+const heldKeys = new Set();
+const NAMED_KEYS = new Set([
+  'Enter', 'Escape', 'Backspace', 'Tab', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp',
+  'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown',
+]);
+
+
+function isForwardableKey(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) {
+    return false;  // leave browser shortcuts (copy, paste, reload...) alone
+  }
+  return e.key && e.key !== 'Unidentified' && e.key !== 'Process' && e.key !== 'Dead' &&
+    (e.key.length === 1 || NAMED_KEYS.has(e.key));
+}
+
+function releaseHeldKeys() {
+  for (const key of heldKeys) {
+    sendInput({ type: 'keyup', key });
+  }
+  heldKeys.clear();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!isForwardableKey(e)) {
+    return;
+  }
+  // In the hidden input, text and Backspace come through its input event instead.
+  if (e.target === kbdInput && (e.key.length === 1 || e.key === 'Backspace')) {
+    return;
+  }
+  e.preventDefault();
+  heldKeys.add(e.key);
+  sendInput({ type: 'keydown', key: e.key, repeat: e.repeat });
+});
+
+document.addEventListener('keyup', (e) => {
+  if (!heldKeys.has(e.key)) {
+    return;
+  }
+  e.preventDefault();
+  heldKeys.delete(e.key);
+  sendInput({ type: 'keyup', key: e.key });
+});
+
+window.addEventListener('blur', releaseHeldKeys);
+
+document.addEventListener('paste', (e) => {
+  if (e.target === kbdInput) {
+    return;
+  }
+  const text = e.clipboardData && e.clipboardData.getData('text');
+  if (text) {
+    e.preventDefault();
+    sendInput({ type: 'text', text });
+  }
+});
+
+function resetKbdInput() {
+  kbdInput.value = KBD_SENTINEL;
+  kbdInput.setSelectionRange(KBD_SENTINEL.length, KBD_SENTINEL.length);
+}
+
+function flushKbdInput() {
+  const value = kbdInput.value;
+  if (value.startsWith(KBD_SENTINEL)) {
+    const text = value.slice(KBD_SENTINEL.length);
+    if (text) {
+      sendInput({ type: 'text', text });
+    }
+  } else {
+    // Each character missing from the sentinel is one Backspace.
+    const deleted = Math.max(1, KBD_SENTINEL.length - value.length);
+    for (let i = 0; i < deleted; i++) {
+      sendInput({ type: 'keytap', key: 'Backspace' });
+    }
+  }
+  resetKbdInput();
+}
+
+kbdInput.addEventListener('input', (e) => {
+  if (!e.isComposing) {
+    flushKbdInput();
+  }
+});
+kbdInput.addEventListener('compositionend', flushKbdInput);
+kbdInput.addEventListener('focus', () => {
+  resetKbdInput();
+  kbdToggle.classList.add('active');
+});
+kbdInput.addEventListener('blur', () => kbdToggle.classList.remove('active'));
+
+// Keep focus where it is when the button is pressed, then toggle the hidden input.
+kbdToggle.addEventListener('mousedown', (e) => e.preventDefault());
+kbdToggle.addEventListener('click', () => {
+  if (document.activeElement === kbdInput) {
+    kbdInput.blur();
+  } else {
+    kbdInput.focus();
+  }
+});
+
 // Start WebSocket connection
 layoutCanvas();
 connectWebSocket();
