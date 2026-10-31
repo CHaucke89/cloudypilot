@@ -1,0 +1,291 @@
+name: cloudypilot prebuilt action
+
+env:
+  # not /data/openpilot: the runner is a real device and that's its live install
+  BUILD_DIR: "/data/cloudypilot-build"
+  OUTPUT_DIR: ${{ github.workspace }}/output
+  CI_DIR: ${{ github.workspace }}/release/ci
+  PUBLIC_REPO_URL: "https://github.com/CHaucke89/cloudypilot"
+
+  # Runtime configuration
+  SOURCE_BRANCH: "${{ github.ref_name }}"
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      wait_for_tests:
+        description: 'Wait for tests to finish'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  prepare_strategy:
+    runs-on: ubuntu-24.04
+    if: github.repository == 'CHaucke89/cloudypilot'
+    outputs:
+      new_branch: ${{ steps.strategy.outputs.new_branch }}
+      extra_version_identifier: ${{ steps.strategy.outputs.extra_version_identifier }}
+      version: ${{ steps.strategy.outputs.version }}
+      driving_onnx_sha256: ${{ steps.models.outputs.driving_onnx_sha256 }}
+      dm_onnx_sha256: ${{ steps.models.outputs.dm_onnx_sha256 }}
+      tinygrad_ref: ${{ steps.models.outputs.tinygrad_ref }}
+      use_hf_model: ${{ steps.models.outputs.use_hf_model }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Extract deploy strategy
+        id: strategy
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          echo "Current branch: $BRANCH"
+          echo "new_branch=${BRANCH}-prebuilt" >> $GITHUB_OUTPUT
+          echo "version=$(date '+%Y.%m.%d')-${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "extra_version_identifier=cloudypilot" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+
+      # sunnypilot's HF dataset is public, so no credentials are needed to read it. Its pkls are only
+      # usable if they were compiled from the same ONNX with the same tinygrad; otherwise compile on device.
+      # SKIP_TINYGRAD_COMPILE skips both the driving and the DM model (and the DM warps), so HF has to
+      # have both for the tree we're building or we compile everything on device.
+      - name: Check for prebuilt models on HF
+        id: models
+        env:
+          HF_REPO: sunnypilot/sunnypilot_models_v1
+        run: |
+          MODELS_DIR=openpilot/selfdrive/modeld/models
+          # lfs isn't pulled, so the onnx files are still their pointer files
+          DRIVING_HASH=$(grep '^oid sha256:' $MODELS_DIR/driving_supercombo.onnx | cut -d: -f2)
+          DM_HASH=$(grep '^oid sha256:' $MODELS_DIR/dmonitoring_model.onnx | cut -d: -f2)
+          TINYGRAD_REF=$(git ls-tree HEAD tinygrad_repo | awk '{print $3}')
+          echo "Driving ONNX hash: $DRIVING_HASH"
+          echo "DM ONNX hash: $DM_HASH"
+          echo "tinygrad ref: $TINYGRAD_REF"
+          echo "driving_onnx_sha256=$DRIVING_HASH" >> $GITHUB_OUTPUT
+          echo "dm_onnx_sha256=$DM_HASH" >> $GITHUB_OUTPUT
+          echo "tinygrad_ref=$TINYGRAD_REF" >> $GITHUB_OUTPUT
+
+          on_hf() {
+            local HF_PATH="$1" HASH="$2"
+            [ -n "$HASH" ] || return 1
+            local JSON_URL="https://huggingface.co/datasets/${HF_REPO}/resolve/main/${HF_PATH}/default_models.json"
+            [ "$(curl -fsSL "${JSON_URL}?t=$(date +%s)" | jq -r --arg hash "$HASH" --arg tg "$TINYGRAD_REF" '
+              . as $root | any(.bundles[]; .onnx_sha256 == $hash and (.tinygrad_ref // $root.tinygrad_ref) == $tg)
+            ' 2>/dev/null)" == "true" ]
+          }
+
+          if on_hf models/defaults/small "$DRIVING_HASH" && on_hf models/defaults/dm "$DM_HASH"; then
+            echo "Matching driving and DM models found on HF, skipping on-device compile"
+            echo "use_hf_model=true" >> $GITHUB_OUTPUT
+          else
+            echo "No matching driving and DM models on HF, compiling on device"
+            echo "use_hf_model=false" >> $GITHUB_OUTPUT
+          fi
+
+  validate_tests:
+    runs-on: ubuntu-24.04
+    needs: [ prepare_strategy ]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.wait_for_tests }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Wait for Tests
+        uses: ./.github/workflows/wait-for-action
+        with:
+          workflow: tests.yaml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          should-wait-for-start: 'false'
+
+  build:
+    needs: [ validate_tests, prepare_strategy ]
+    concurrency:
+      group: build-${{ github.ref_name }}
+      cancel-in-progress: false
+    runs-on: [self-hosted, tici]
+    if: ${{
+      (always() && !cancelled() && !failure()) &&
+      needs.prepare_strategy.result == 'success' &&
+      (needs.validate_tests.result == 'success' || needs.validate_tests.result == 'skipped')
+      }}
+    env:
+      # /home is a tiny overlay on AGNOS, so keep the venv, python and cache on /data
+      CI_ROOT: /data/cloudypilot-ci
+      UV_PROJECT_ENVIRONMENT: /data/cloudypilot-ci/venv
+      VIRTUAL_ENV: /data/cloudypilot-ci/venv
+      UV_PYTHON_PREFERENCE: managed
+      UV_PYTHON_INSTALL_DIR: /data/cloudypilot-ci/uv/python
+      UV_CACHE_DIR: /data/cloudypilot-ci/uv/cache
+    steps:
+      # anything run through AGNOS's root-owned uv/pip shims leaves root-owned files the runner can't clean or rewrite
+      - name: Reclaim workspace ownership
+        run: |
+          for d in "$GITHUB_WORKSPACE" "$CI_ROOT"; do
+            [ -d "$d" ] && sudo chown -R "$(id -u):$(id -g)" "$d"
+          done
+          true
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
+          ref: ${{ env.SOURCE_BRANCH }}
+      # big_* is the comma four (Chestnut) model; release_files.py leaves it out of tici builds anyway
+      - run: git lfs pull --exclude="openpilot/selfdrive/modeld/models/big_*"
+
+      - name: Set environment variables
+        run: |
+          # Set up common environment
+          source /etc/profile;
+          # profile points this at the system venv; printenv below would carry that into later steps
+          export VIRTUAL_ENV=$UV_PROJECT_ENVIRONMENT
+          export TMPDIR=${CI_ROOT}/tmp
+          mkdir -p "$TMPDIR"
+          # not the /usr/comma/shims/uv wrapper: it runs as root, remounts / rw, and swallows uv's exit code
+          # tools extra: SConstruct imports comma-deps-ncurses unconditionally
+          /usr/bin/uv sync --frozen --extra tools
+          printenv >> $GITHUB_ENV
+          echo "${UV_PROJECT_ENVIRONMENT}/bin" >> $GITHUB_PATH
+
+      - name: Setup build environment
+        run: |
+          mkdir -p "${BUILD_DIR}/"
+          sudo find $BUILD_DIR/ -mindepth 1 -delete
+          echo "Starting build stage..."
+          echo "BUILD_DIR: ${BUILD_DIR}"
+          echo "CI_DIR: ${CI_DIR}"
+          echo "VERSION: ${{ needs.prepare_strategy.outputs.version }}"
+          echo "UV_PROJECT_ENVIRONMENT: ${UV_PROJECT_ENVIRONMENT}"
+          echo "VIRTUAL_ENV: ${VIRTUAL_ENV}"
+          echo "-------"
+          if [[ "${{ runner.debug }}" == "1" ]]; then
+            printenv
+          fi
+          source ${UV_PROJECT_ENVIRONMENT}/bin/activate
+          PYTHONPATH=${{ github.workspace }}:$PYTHONPATH ${{ github.workspace }}/scripts/manage-powersave.py --disable
+
+      - name: Build Main Project
+        run: |
+          export PYTHONPATH="$BUILD_DIR:$BUILD_DIR/msgq_repo:$BUILD_DIR/opendbc_repo:$BUILD_DIR/rednose_repo:$BUILD_DIR/teleoprtc_repo:$BUILD_DIR/tinygrad_repo"
+          ./tools/release/release_files.py | xargs -0 cp -pR --parents -t "$BUILD_DIR" --
+          # outside the checkout, which is wiped each run. /data/scons_cache is the device's, not ours.
+          SCONS_CACHE="$RUNNER_WORKSPACE/scons_cache"
+          mkdir -p "$SCONS_CACHE"
+          cd $BUILD_DIR
+          echo "Building locationd..."
+          # -j1: parallel rednose generators OOM the device
+          scons -j1 cache_dir="$SCONS_CACHE" --minimal \
+            openpilot/selfdrive/locationd openpilot/sunnypilot/selfdrive/locationd
+          if [[ "${{ needs.prepare_strategy.outputs.use_hf_model }}" == "true" ]]; then
+            # driving and DM models are downloaded from HF at publish
+            export SKIP_TINYGRAD_COMPILE=1
+          fi
+          echo "Building rest of cloudypilot"
+          /usr/bin/time -v scons -j$(nproc) cache_dir="$SCONS_CACHE" --minimal
+          touch ${BUILD_DIR}/prebuilt
+          if [[ "${{ runner.debug }}" == "1" ]]; then
+            ls -la ${BUILD_DIR}
+          fi
+
+      - name: Strip release tree
+        run: |
+          cd $BUILD_DIR
+          find . -name '*.a' -delete
+          find . -name '*.o' -delete
+          find . -name '*.os' -delete
+          find . -name '*.pyc' -delete
+          find . -name 'moc_*' -delete
+          find . -name '__pycache__' -type d -exec rm -rf {} +
+          find . -name 'SConstruct' -delete
+          find . -name 'SConscript' -delete
+          rm -rf .sconsign.dblite Jenkinsfile tools/release/ release/
+          rm -f openpilot/selfdrive/modeld/models/*.onnx*
+          rm -f openpilot/sunnypilot/modeld*/models/*.onnx*
+          find openpilot/third_party/ -name '*x86*' -exec rm -r {} +
+          find openpilot/third_party/ -name '*Darwin*' -exec rm -r {} +
+          cd -
+
+      - name: 'Tar.gz files'
+        run: |
+          tar czf prebuilt.tar.gz -C ${{ env.BUILD_DIR }} .
+          ls -la prebuilt.tar.gz
+
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilt
+          path: prebuilt.tar.gz
+          compression-level: 0
+
+      - name: Re-enable powersave
+        if: always()
+        run: |
+          # powersave is only disabled after the venv exists, so nothing to undo without one
+          [ -f "${UV_PROJECT_ENVIRONMENT}/bin/activate" ] || exit 0
+          source ${UV_PROJECT_ENVIRONMENT}/bin/activate
+          PYTHONPATH=${{ github.workspace }}:$PYTHONPATH ${{ github.workspace }}/scripts/manage-powersave.py --enable
+
+  publish:
+    concurrency:
+      group: publish-${{ github.ref_name }}
+      cancel-in-progress: true
+    if: ${{
+      always() && !cancelled() &&
+      needs.build.result == 'success' &&
+      needs.prepare_strategy.result == 'success'
+      }}
+    needs: [ build, prepare_strategy ]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download prebuilt artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: prebuilt
+
+      - name: Untar prebuilt
+        run: |
+          mkdir -p ${{ env.OUTPUT_DIR }}
+          tar xzf prebuilt.tar.gz -C ${{ env.OUTPUT_DIR }}
+
+      - name: Download models from HF
+        if: ${{ needs.prepare_strategy.outputs.use_hf_model == 'true' }}
+        uses: ./.github/workflows/download-hf-model
+        with:
+          hf_repo: sunnypilot/sunnypilot_models_v1
+          dest_dir: ${{ env.OUTPUT_DIR }}/openpilot/selfdrive/modeld/models
+          tinygrad_ref: ${{ needs.prepare_strategy.outputs.tinygrad_ref }}
+          models: |
+            [
+              {"hf_path": "models/defaults/small", "onnx_hash": "${{ needs.prepare_strategy.outputs.driving_onnx_sha256 }}", "canonical": "driving_tinygrad.pkl"},
+              {"hf_path": "models/defaults/dm", "onnx_hash": "${{ needs.prepare_strategy.outputs.dm_onnx_sha256 }}", "canonical": "dmonitoring_model_tinygrad.pkl"}
+            ]
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Publish to Public Repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo '${{ toJSON(needs.prepare_strategy.outputs) }}'
+          ls -la ${{ env.OUTPUT_DIR }}
+
+          ${{ env.CI_DIR }}/publish.sh \
+            "${{ github.workspace }}" \
+            "${{ env.OUTPUT_DIR }}" \
+            "${{ needs.prepare_strategy.outputs.new_branch }}" \
+            "${{ needs.prepare_strategy.outputs.version }}" \
+            "https://x-access-token:${{github.token}}@github.com/CHaucke89/cloudypilot.git" \
+            "${{ needs.prepare_strategy.outputs.extra_version_identifier }}"
