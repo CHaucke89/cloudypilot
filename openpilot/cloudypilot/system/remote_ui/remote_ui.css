@@ -173,3 +173,18 @@ body {
   z-index: 100;
   pointer-events: none;
 }
+
+#res-toggle {
+  position: absolute;
+  bottom: calc(var(--safe-bottom) + 56px);
+  right: calc(var(--safe-right) + 10px);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  z-index: 100;
+}

@@ -3,9 +3,9 @@
 Replaces the ``RemoteUIClientConnected`` param. Param writes go through a
 tmp file + fsync + rename, which is far too heavy to do from the streaming
 path. Instead, ``stream_server`` owns a tiny POSIX shared memory segment at
-``/dev/shm/openpilot_ui_clients`` holding the current WebSocket client count
-and the worst network queueing delay reported by those clients, and the UI
-maps it read-only. Reads are a plain memory access, no syscalls.
+``/dev/shm/openpilot_ui_clients`` holding the current WebSocket client count,
+the worst network queueing delay reported by those clients and the widest
+frame any of them asked for, and the UI maps it read-only. Reads are a plain memory access, no syscalls.
 
 The writer never unlinks the segment: a reader's mmap is bound to the inode,
 so recreating the file would leave readers looking at a stale copy forever.
@@ -16,7 +16,7 @@ import os
 import struct
 
 SHM_PATH = "/dev/shm/openpilot_ui_clients"
-STATE_FMT = "<II"  # uint32 client count, uint32 worst client queue delay (ms)
+STATE_FMT = "<III"  # uint32 client count, uint32 worst client queue delay (ms), uint32 requested frame width (0 = full)
 STATE_SIZE = struct.calcsize(STATE_FMT)
 
 
@@ -33,6 +33,7 @@ class ClientStateWriter:
       os.close(fd)
     self.set_client_count(0)
     self.set_network_delay_ms(0)
+    self.set_requested_width(0)
 
   def set_client_count(self, count: int) -> None:
     struct.pack_into("<I", self._map, 0, max(0, count))
@@ -40,9 +41,13 @@ class ClientStateWriter:
   def set_network_delay_ms(self, delay_ms: float) -> None:
     struct.pack_into("<I", self._map, 4, max(0, min(int(delay_ms), 0xFFFFFFFF)))
 
+  def set_requested_width(self, width: int) -> None:
+    struct.pack_into("<I", self._map, 8, max(0, min(int(width), 0xFFFFFFFF)))
+
   def close(self) -> None:
     self.set_client_count(0)
     self.set_network_delay_ms(0)
+    self.set_requested_width(0)
     self._map.close()
 
 
@@ -78,6 +83,13 @@ class ClientStateReader:
       return 0
     assert self._map is not None
     return struct.unpack_from("<I", self._map, 4)[0]
+
+  def requested_width(self) -> int:
+    """Widest frame (in pixels) any connected browser wants, 0 for full resolution."""
+    if self._map is None and not self._open():
+      return 0
+    assert self._map is not None
+    return struct.unpack_from("<I", self._map, 8)[0]
 
   def close(self) -> None:
     if self._map is not None:
