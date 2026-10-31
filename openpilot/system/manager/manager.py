@@ -148,8 +148,6 @@ def manager_thread() -> None:
     ignore += ["manage_athenad", "uploader"]
   if os.getenv("NOBOARD") is not None:
     ignore.append("pandad")
-  if params.get_bool("AlwaysOffDM"):
-    ignore += ["dmonitoringd"]
   ignore += [x for x in os.getenv("BLOCK", "").split(",") if len(x) > 0]
 
   sm = messaging.SubMaster(['deviceState', 'carParams', 'pandaStates'], poll='deviceState')
