@@ -121,6 +121,7 @@ class OpenpilotMetadata:
                                           "github.com/sunnyhaibin/sunnypilot",
                                           "github.com/sunnyhaibin/openpilot")
 
+  @property
   def cloudypilot_remote(self) -> bool:
     return self.git_normalized_origin in ("github.com/CHaucke89/cloudypilot",
                                           "github.com/CHaucke89/openpilot")
