@@ -1,17 +1,21 @@
 import pyray as rl
-from openpilot.selfdrive.ui.onroad.model_renderer import ModelRenderer, THROTTLE_COLORS
+from openpilot.selfdrive.ui.onroad.model_renderer import ModelRenderer
+from openpilot.selfdrive.ui.ui_state import ui_state
+from openpilot.system.ui.lib.shader_polygon import draw_polygon, Gradient
 
-ORANGE_THROTTLE_COLORS = [
-  rl.Color(255, 140, 0, 102),
-  rl.Color(255, 165, 0, 89),
-  rl.Color(255, 165, 0, 0),
-]
+ORANGE_PATH_GRADIENT = Gradient(
+  start=(0.0, 1.0),
+  end=(0.0, 0.0),
+  colors=[rl.Color(255, 140, 0, 102), rl.Color(255, 165, 0, 89), rl.Color(255, 165, 0, 0)],
+  stops=[0.0, 0.5, 1.0],
+)
 
 
 class ModelRendererCP(ModelRenderer):
-  @staticmethod
-  def _blend_colors(begin_colors, end_colors, t):
-    # Swap the upstream green "throttle" gradient for orange
-    if end_colors is THROTTLE_COLORS:
-      end_colors = ORANGE_THROTTLE_COLORS
-    return ModelRenderer._blend_colors(begin_colors, end_colors, t)
+  def _draw_path(self):
+    # Swap the upstream green stock path gradient for orange
+    rainbow = ui_state.rainbow_path and self._lateral_active
+    if self._path.projected_points.size and not self._longitudinal_control and not rainbow:
+      draw_polygon(self._rect, self._path.projected_points, gradient=ORANGE_PATH_GRADIENT)
+      return
+    super()._draw_path()
