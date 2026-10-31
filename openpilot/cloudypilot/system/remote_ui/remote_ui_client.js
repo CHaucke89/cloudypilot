@@ -436,6 +436,57 @@ canvas.addEventListener('touchcancel', (e) => {
   }
 }, { passive: false });
 
+// Keyboard input: desktop keys and pastes are forwarded. Phones use openpilot's own
+// on-screen keyboard by tapping it in the stream.
+const heldKeys = new Set();
+const NAMED_KEYS = new Set([
+  'Enter', 'Escape', 'Backspace', 'Tab', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp',
+  'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown',
+]);
+
+function isForwardableKey(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) {
+    return false;  // leave browser shortcuts (copy, paste, reload...) alone
+  }
+  return e.key && e.key !== 'Unidentified' && e.key !== 'Process' && e.key !== 'Dead' &&
+    (e.key.length === 1 || NAMED_KEYS.has(e.key));
+}
+
+function releaseHeldKeys() {
+  for (const key of heldKeys) {
+    sendInput({ type: 'keyup', key });
+  }
+  heldKeys.clear();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!isForwardableKey(e)) {
+    return;
+  }
+  e.preventDefault();
+  heldKeys.add(e.key);
+  sendInput({ type: 'keydown', key: e.key, repeat: e.repeat });
+});
+
+document.addEventListener('keyup', (e) => {
+  if (!heldKeys.has(e.key)) {
+    return;
+  }
+  e.preventDefault();
+  heldKeys.delete(e.key);
+  sendInput({ type: 'keyup', key: e.key });
+});
+
+window.addEventListener('blur', releaseHeldKeys);
+
+document.addEventListener('paste', (e) => {
+  const text = e.clipboardData && e.clipboardData.getData('text');
+  if (text) {
+    e.preventDefault();
+    sendInput({ type: 'text', text });
+  }
+});
+
 // Start WebSocket connection
 layoutCanvas();
 connectWebSocket();

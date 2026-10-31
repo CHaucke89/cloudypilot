@@ -155,6 +155,14 @@ class Keyboard(Widget):
     input_box_rect = rl.Rectangle(rect.x + input_margin, rect.y + 160, rect.width - input_margin, 100)
     self._render_input_area(input_box_rect)
 
+    # Physical (or remote) keyboard: Enter confirms, Escape cancels
+    if rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER) and len(self._input_box.text) >= self._min_text_size:
+      self._key_callback(ENTER_KEY)
+      return
+    if rl.is_key_pressed(rl.KeyboardKey.KEY_ESCAPE):
+      self._cancel_button_callback()
+      return
+
     # Process backspace key repeat if it's held down
     if not self._all_keys[BACKSPACE_KEY].is_pressed:
       self._backspace_pressed = False
