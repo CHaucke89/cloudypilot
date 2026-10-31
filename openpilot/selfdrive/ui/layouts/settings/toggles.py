@@ -112,7 +112,6 @@ class TogglesLayout(Widget):
     self._locked_toggles = set()
     items = self._initialize_items()
 
-    self._update_experimental_mode_icon()
     self._scroller = Scroller(items, line_separator=True, spacing=0)
 
     ui_state.add_engaged_transition_callback(self._update_toggles)
@@ -126,8 +125,9 @@ class TogglesLayout(Widget):
       if param == "DisengageOnAccelerator":
         self._toggles["LongitudinalPersonality"] = self._long_personality_setting
         self._toggles["InitialCruiseSpeedKph"] = self._initial_cruise_speed
+        items += [self._long_personality_setting, self._initial_cruise_speed]
 
-    self._scroller = Scroller(list(self._toggles.values()), line_separator=True, spacing=0)
+    return items
 
   def _build_toggle(self, param, title, desc, icon, needs_restart):
     toggle = toggle_item(
