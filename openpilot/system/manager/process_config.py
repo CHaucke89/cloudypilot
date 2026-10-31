@@ -74,7 +74,7 @@ def livestream(started: bool, params: Params, CP: car.CarParams) -> bool:
 def use_copyparty(started, params, CP: car.CarParams) -> bool:
   return bool(params.get_bool("EnableCopyparty"))
 
-def use_remote_ui_stream_server(started, params, CP: car.CarParams) -> bool:
+def enable_remote_ui(started, params, CP: car.CarParams) -> bool:
   return bool(params.get_bool("EnableRemoteUI"))
 
 def sunnylink_ready_shim(started, params, CP: car.CarParams) -> bool:
@@ -163,13 +163,15 @@ procs = [
   # debug procs
   NativeProcess("bridge", "openpilot/cereal/messaging", ["./bridge"], notcar),
   PythonProcess("webrtcd", "openpilot.system.webrtc.webrtcd", or_(livestream, notcar)),
-  PythonProcess("remote_ui_stream_server", "openpilot.cloudypilot.system.remote_ui.stream_server", use_remote_ui_stream_server),
   PythonProcess("joystick", "openpilot.tools.joystick.joystick_control", and_(joystick, iscar)),
 
   # sunnylink <3
   DaemonProcess("manage_sunnylinkd", "openpilot.sunnypilot.sunnylink.athena.manage_sunnylinkd", "SunnylinkdPid"),
   PythonProcess("sunnylink_registration_manager", "openpilot.sunnypilot.sunnylink.registration_manager", sunnylink_need_register_shim),
   PythonProcess("statsd_sp", "openpilot.sunnypilot.sunnylink.statsd", and_(always_run, sunnylink_ready_shim)),
+
+  # remote ui
+  PythonProcess("remote_ui", "openpilot.cloudypilot.system.remote_ui.stream_server", enable_remote_ui),
 ]
 
 # sunnypilot
