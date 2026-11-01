@@ -308,6 +308,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"TorqueParamsOverrideLatAccelFactor", {PERSISTENT | BACKUP, FLOAT, "2.5"}},
 
     // cloudypilot params
+    {"AlwaysOffDM", {PERSISTENT, BOOL}},
     {"AlwaysOnBsm", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"AuthorizedHash", {PERSISTENT, STRING}},
     {"CommaDongleId", {PERSISTENT, STRING}},
@@ -317,6 +318,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"EnableRemoteUI", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"KonikApi", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"KonikDongleId", {PERSISTENT, STRING}},
+    {"PermaLatch", {PERSISTENT, BOOL}},
     {"TorqueBarFade", {PERSISTENT, BOOL, "1"}},
     {"UseCustomSR", {PERSISTENT, BOOL, "0"}},
     {"UseFeetGPS", {PERSISTENT, BOOL, "0"}},
