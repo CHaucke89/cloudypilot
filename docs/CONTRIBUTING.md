@@ -1,4 +1,4 @@
-> sunnypilot follows [commaai/openpilot](https://github.com/commaai/openpilot)'s contributing guidelines. The following applies to all contributions here.
+> cloudypilot follows [commaai/openpilot](https://github.com/commaai/openpilot)'s contributing guidelines. The following applies to all contributions here.
 
 # How to contribute
 
