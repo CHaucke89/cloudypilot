@@ -6,6 +6,7 @@ from openpilot.system.ui.lib.multilang import tr, trn
 from openpilot.system.ui.widgets.label import gui_label
 from openpilot.selfdrive.ui.cloudypilot.widgets.current_model import ModelWidget
 from openpilot.selfdrive.ui.cloudypilot.widgets.current_branch import BranchWidget
+from openpilot.selfdrive.ui.cloudypilot.widgets.update_now import UpdateNowWidget
 
 BRAND_FONT_SIZE = 48
 BRAND_DESC_SPACING = 12
@@ -17,6 +18,7 @@ class HomeLayoutCP(HomeLayoutSP):
 
     self._model_widget = ModelWidget()
     self._branch_widget = BranchWidget()
+    self._update_widget = UpdateNowWidget()
 
   def _render_header(self):
     font = gui_app.font(FontWeight.MEDIUM)
@@ -72,10 +74,9 @@ class HomeLayoutCP(HomeLayoutSP):
   def _render_left_column(self):
     self._model_widget.render(self.left_column_rect)
 
-    branch_rect = rl.Rectangle(
-      self.left_column_rect.x,
-      self.left_column_rect.y + 400 + SPACING,
-      self.left_column_rect.width,
-      self.left_column_rect.height
-    )
-    self._branch_widget.render(branch_rect)
+    row_y = self.left_column_rect.y + 400 + SPACING
+    card_width = (self.left_column_rect.width - SPACING) / 2
+    height = self.left_column_rect.height
+
+    self._branch_widget.render(rl.Rectangle(self.left_column_rect.x, row_y, card_width, height))
+    self._update_widget.render(rl.Rectangle(self.left_column_rect.x + card_width + SPACING, row_y, card_width, height))
