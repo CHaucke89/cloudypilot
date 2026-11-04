@@ -21,11 +21,18 @@ BUTTON_TEXT = rl.Color(20, 20, 20, 255)
 UPDATE_REMOTE = "origin"
 UPDATE_BRANCH = "ch-dev"
 
-UPDATE_COMMANDS = (
+HARD_UPDATE_COMMANDS = (
   ["git", "fetch", UPDATE_REMOTE],
   ["git", "reset", "--hard", f"{UPDATE_REMOTE}/{UPDATE_BRANCH}"],
   ["git", "submodule", "update", "--init", "--recursive"],
 )
+
+SOFT_UPDATE_COMMANDS = (
+  ["git", "pull", UPDATE_REMOTE],
+  ["git", "submodule", "update", "--init", "--recursive"],
+)
+
+BUTTON_SPACING = 24
 
 
 class YellowButton(Button):
@@ -39,25 +46,27 @@ class YellowButton(Button):
 
 
 class UpdateNowWidget(Widget):
-  """Card with a button that fetches origin, hard-resets to origin/ch-dev, updates submodules, then soft reboots."""
+  """Card with Hard/Soft update buttons. Hard: fetch + reset --hard to origin/ch-dev. Soft: pull. Both update submodules, then soft reboot."""
 
   def __init__(self):
     super().__init__()
     self._updating = False
-    self._button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Update"), self._on_clicked,
-                                button_style=ButtonStyle.NORMAL)
+    self._hard_button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Hard Update"),
+                                     lambda: self._start_update(HARD_UPDATE_COMMANDS), button_style=ButtonStyle.NORMAL)
+    self._soft_button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Soft Update"),
+                                     lambda: self._start_update(SOFT_UPDATE_COMMANDS), button_style=ButtonStyle.NORMAL)
     self._title_label = Label(lambda: tr("Instant Update"), font_weight=FontWeight.MEDIUM, font_size=64)
 
-  def _on_clicked(self):
+  def _start_update(self, commands):
     if self._updating:
       return
     self._updating = True
-    threading.Thread(target=self._run_update, daemon=True).start()
+    threading.Thread(target=self._run_update, args=(commands,), daemon=True).start()
 
-  def _run_update(self):
+  def _run_update(self, commands):
     cmd: list[str] = []
     try:
-      for cmd in UPDATE_COMMANDS:
+      for cmd in commands:
         subprocess.run(cmd, cwd=BASEDIR, check=True, capture_output=True, text=True)
       ui_state.params.put_bool("DoSoftReboot", True)
     except subprocess.CalledProcessError as e:
@@ -79,12 +88,14 @@ class UpdateNowWidget(Widget):
     y += 64 + spacing
 
     desc_font = gui_app.font(FontWeight.NORMAL)
-    for line in wrap_text(desc_font, tr(f"Update {UPDATE_BRANCH}"), 40, int(w)):
+    for line in wrap_text(desc_font, tr(f"Update to latest {UPDATE_BRANCH}"), 40, int(w)):
       text_size = measure_text_cached(desc_font, line, 40)
       rl.draw_text_ex(desc_font, line, rl.Vector2(int(rect.x + (rect.width - text_size.x) // 2), int(y)), 40, 0, rl.WHITE)
       y += 40 * FONT_SCALE
 
     y += spacing
 
-    self._button.set_enabled(not self._updating)
-    self._button.render(rl.Rectangle(x, y, w, 48 + 64))
+    half_w = (w - BUTTON_SPACING) / 2
+    for i, button in enumerate((self._soft_button, self._hard_button)):
+      button.set_enabled(not self._updating)
+      button.render(rl.Rectangle(x + i * (half_w + BUTTON_SPACING), y, half_w, 48 + 64))

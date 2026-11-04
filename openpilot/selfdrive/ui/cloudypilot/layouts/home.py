@@ -75,8 +75,10 @@ class HomeLayoutCP(HomeLayoutSP):
     self._model_widget.render(self.left_column_rect)
 
     row_y = self.left_column_rect.y + 400 + SPACING
-    card_width = (self.left_column_rect.width - SPACING) / 2
+    row_width = self.left_column_rect.width - SPACING
+    branch_width = row_width * 0.4
+    update_width = row_width - branch_width
     height = self.left_column_rect.height
 
-    self._branch_widget.render(rl.Rectangle(self.left_column_rect.x, row_y, card_width, height))
-    self._update_widget.render(rl.Rectangle(self.left_column_rect.x + card_width + SPACING, row_y, card_width, height))
+    self._branch_widget.render(rl.Rectangle(self.left_column_rect.x, row_y, branch_width, height))
+    self._update_widget.render(rl.Rectangle(self.left_column_rect.x + branch_width + SPACING, row_y, update_width, height))
