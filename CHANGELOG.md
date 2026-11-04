@@ -1,6 +1,5 @@
 cloudypilot Version 0.1.0 (2026-11-01)
 ========================
-
 * Initial release of cloudypilot, a personal fork of sunnypilot
   * Based on sunnypilot master (October 29, 2026), which includes sunnypilot v2026.002.000
   * See CHANGELOG-SP.md for the full sunnypilot and openpilot changelog history
