@@ -44,9 +44,9 @@ class UpdateNowWidget(Widget):
   def __init__(self):
     super().__init__()
     self._updating = False
-    self._button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Update Now"), self._on_clicked,
+    self._button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Update"), self._on_clicked,
                                 button_style=ButtonStyle.NORMAL)
-    self._title_label = Label(lambda: tr("Update"), font_weight=FontWeight.MEDIUM, font_size=64)
+    self._title_label = Label(lambda: tr("Instant Update"), font_weight=FontWeight.MEDIUM, font_size=64)
 
   def _on_clicked(self):
     if self._updating:
@@ -79,7 +79,7 @@ class UpdateNowWidget(Widget):
     y += 64 + spacing
 
     desc_font = gui_app.font(FontWeight.NORMAL)
-    for line in wrap_text(desc_font, tr(f"Pull latest {UPDATE_BRANCH} and reboot"), 40, int(w)):
+    for line in wrap_text(desc_font, tr(f"Update {UPDATE_BRANCH}"), 40, int(w)):
       text_size = measure_text_cached(desc_font, line, 40)
       rl.draw_text_ex(desc_font, line, rl.Vector2(int(rect.x + (rect.width - text_size.x) // 2), int(y)), 40, 0, rl.WHITE)
       y += 40 * FONT_SCALE
