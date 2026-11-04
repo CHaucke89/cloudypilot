@@ -78,18 +78,23 @@ class UpdateNowWidget(Widget):
       self._updating = False
 
   def _render(self, rect: rl.Rectangle):
-    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 400), 0.04, 20, rl.Color(51, 51, 51, 255))
+    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, rect.height), 0.04, 20, rl.Color(51, 51, 51, 255))
 
     x = rect.x + 56
-    y = rect.y + 40
     w = rect.width - 112
     spacing = 42
+
+    desc_font = gui_app.font(FontWeight.NORMAL)
+    wrapped_desc = wrap_text(desc_font, tr(f"Update to latest {UPDATE_BRANCH}"), 40, int(w))
+
+    button_height = 48 + 64
+    content_height = 64 + spacing + len(wrapped_desc) * 40 * FONT_SCALE + spacing + button_height
+    y = rect.y + (rect.height - content_height) / 2
 
     self._title_label.render(rl.Rectangle(rect.x, y, rect.width, 64))
     y += 64 + spacing
 
-    desc_font = gui_app.font(FontWeight.NORMAL)
-    for line in wrap_text(desc_font, tr(f"Update to latest {UPDATE_BRANCH}"), 40, int(w)):
+    for line in wrapped_desc:
       text_size = measure_text_cached(desc_font, line, 40)
       rl.draw_text_ex(desc_font, line, rl.Vector2(int(rect.x + (rect.width - text_size.x) // 2), int(y)), 40, 0, rl.WHITE)
       y += 40 * FONT_SCALE
@@ -99,4 +104,4 @@ class UpdateNowWidget(Widget):
     half_w = (w - BUTTON_SPACING) / 2
     for i, button in enumerate((self._soft_button, self._hard_button)):
       button.set_enabled(not self._updating)
-      button.render(rl.Rectangle(x + i * (half_w + BUTTON_SPACING), y, half_w, 48 + 64))
+      button.render(rl.Rectangle(x + i * (half_w + BUTTON_SPACING), y, half_w, button_height))

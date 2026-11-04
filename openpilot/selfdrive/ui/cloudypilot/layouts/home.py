@@ -11,7 +11,6 @@ from openpilot.selfdrive.ui.cloudypilot.widgets.update_now import UpdateNowWidge
 
 BRAND_FONT_SIZE = 48
 BRAND_DESC_SPACING = 12
-OFFROAD_CARD_HEIGHT = 350  # matches SetupWidget._render_offroad_prompt
 
 
 class HomeLayoutCP(HomeLayoutSP):
@@ -73,26 +72,24 @@ class HomeLayoutCP(HomeLayoutSP):
     brand_rect = rl.Rectangle(max(version_left, brand_x), self.header_rect.y, brand_size.x, self.header_rect.height)
     gui_label(brand_rect, brand, BRAND_FONT_SIZE, rl.WHITE, font_weight=FontWeight.AUDIOWIDE)
 
-  def _render_left_column(self):
-    self._model_widget.render(self.left_column_rect)
+  def _card_rects(self, column: rl.Rectangle) -> tuple[rl.Rectangle, rl.Rectangle]:
+    """Split a column into two equal-height cards separated by SPACING."""
+    card_height = (column.height - SPACING) / 2
+    top = rl.Rectangle(column.x, column.y, column.width, card_height)
+    bottom = rl.Rectangle(column.x, column.y + card_height + SPACING, column.width, card_height)
+    return top, bottom
 
-    branch_rect = rl.Rectangle(
-      self.left_column_rect.x,
-      self.left_column_rect.y + 400 + SPACING,
-      self.left_column_rect.width,
-      self.left_column_rect.height
-    )
+  def _render_left_column(self):
+    model_rect, branch_rect = self._card_rects(self.left_column_rect)
+    self._model_widget.render(model_rect)
     self._branch_widget.render(branch_rect)
 
   def _render_right_column(self):
-    super()._render_right_column()
+    # Setup widget fills the whole column until paired; once paired it's a single card with room for the update card below
+    if not ui_state.prime_state.is_paired():
+      super()._render_right_column()
+      return
 
-    # Setup widget fills the whole column until paired; below that, the offroad card leaves room underneath
-    if ui_state.prime_state.is_paired():
-      update_rect = rl.Rectangle(
-        self.right_column_rect.x,
-        self.right_column_rect.y + OFFROAD_CARD_HEIGHT + SPACING,
-        self.right_column_rect.width,
-        self.right_column_rect.height - OFFROAD_CARD_HEIGHT - SPACING
-      )
-      self._update_widget.render(update_rect)
+    offroad_rect, update_rect = self._card_rects(self.right_column_rect)
+    self._setup_widget.render(offroad_rect)
+    self._update_widget.render(update_rect)
