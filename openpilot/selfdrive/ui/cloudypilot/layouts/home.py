@@ -1,5 +1,6 @@
 import pyray as rl
 from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP, HomeLayoutState, HEAD_BUTTON_FONT_SIZE, SPACING
+from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.multilang import tr, trn
@@ -10,6 +11,7 @@ from openpilot.selfdrive.ui.cloudypilot.widgets.update_now import UpdateNowWidge
 
 BRAND_FONT_SIZE = 48
 BRAND_DESC_SPACING = 12
+OFFROAD_CARD_HEIGHT = 350  # matches SetupWidget._render_offroad_prompt
 
 
 class HomeLayoutCP(HomeLayoutSP):
@@ -74,11 +76,23 @@ class HomeLayoutCP(HomeLayoutSP):
   def _render_left_column(self):
     self._model_widget.render(self.left_column_rect)
 
-    row_y = self.left_column_rect.y + 400 + SPACING
-    row_width = self.left_column_rect.width - SPACING
-    branch_width = row_width * 0.4
-    update_width = row_width - branch_width
-    height = self.left_column_rect.height
+    branch_rect = rl.Rectangle(
+      self.left_column_rect.x,
+      self.left_column_rect.y + 400 + SPACING,
+      self.left_column_rect.width,
+      self.left_column_rect.height
+    )
+    self._branch_widget.render(branch_rect)
 
-    self._branch_widget.render(rl.Rectangle(self.left_column_rect.x, row_y, branch_width, height))
-    self._update_widget.render(rl.Rectangle(self.left_column_rect.x + branch_width + SPACING, row_y, update_width, height))
+  def _render_right_column(self):
+    super()._render_right_column()
+
+    # Setup widget fills the whole column until paired; below that, the offroad card leaves room underneath
+    if ui_state.prime_state.is_paired():
+      update_rect = rl.Rectangle(
+        self.right_column_rect.x,
+        self.right_column_rect.y + OFFROAD_CARD_HEIGHT + SPACING,
+        self.right_column_rect.width,
+        self.right_column_rect.height - OFFROAD_CARD_HEIGHT - SPACING
+      )
+      self._update_widget.render(update_rect)

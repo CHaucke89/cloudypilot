@@ -33,6 +33,7 @@ SOFT_UPDATE_COMMANDS = (
 )
 
 BUTTON_SPACING = 24
+BUTTON_FONT_SIZE = 44  # right column is narrow; default 60 won't fit two labels side by side
 
 
 class YellowButton(Button):
@@ -52,9 +53,9 @@ class UpdateNowWidget(Widget):
     super().__init__()
     self._updating = False
     self._hard_button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Hard Update"),
-                                     lambda: self._start_update(HARD_UPDATE_COMMANDS), button_style=ButtonStyle.NORMAL)
+                                     lambda: self._start_update(HARD_UPDATE_COMMANDS), font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
     self._soft_button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Soft Update"),
-                                     lambda: self._start_update(SOFT_UPDATE_COMMANDS), button_style=ButtonStyle.NORMAL)
+                                     lambda: self._start_update(SOFT_UPDATE_COMMANDS), font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
     self._title_label = Label(lambda: tr("Instant Update"), font_weight=FontWeight.MEDIUM, font_size=64)
 
   def _start_update(self, commands):
