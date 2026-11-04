@@ -523,7 +523,6 @@ def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
   print("Network not detected, continuing anyway...")
   return False
 
-
 def main() -> None:
   global client_state
   client_state = ClientStateWriter()
@@ -547,3 +546,6 @@ def main() -> None:
   finally:
     client_state.close()
     shm_reader.close()
+
+if __name__ == "__main__":
+  main()
