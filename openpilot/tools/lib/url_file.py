@@ -4,7 +4,9 @@ import re
 import socket
 import time
 from hashlib import md5
-from urllib3 import PoolManager, Retry
+from urllib.parse import urlsplit
+from urllib.request import getproxies_environment, proxy_bypass_environment
+from urllib3 import PoolManager, ProxyManager, Retry
 from urllib3.response import BaseHTTPResponse
 from urllib3.util import Timeout
 
@@ -56,17 +58,40 @@ class URLFileException(Exception):
 
 class URLFile:
   _pool_manager: PoolManager | None = None
+  _proxy_managers: dict[str, ProxyManager] = {}
 
   @staticmethod
   def reset() -> None:
     URLFile._pool_manager = None
+    URLFile._proxy_managers = {}
 
   @staticmethod
-  def pool_manager() -> PoolManager:
+  def _pool_kwargs() -> dict:
+    socket_options = [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
+    retries = Retry(total=5, backoff_factor=0.5, status_forcelist=[409, 429, 503, 504])
+    return {"num_pools": 10, "maxsize": 100, "socket_options": socket_options, "retries": retries}
+
+  @staticmethod
+  def _proxy_for(url: str) -> str | None:
+    # honor <scheme>_proxy / no_proxy env vars, like requests and curl do
+    parts = urlsplit(url)
+    proxy = getproxies_environment().get(parts.scheme)
+    if not proxy or not parts.hostname or proxy_bypass_environment(parts.hostname):
+      return None
+    return proxy
+
+  @staticmethod
+  def pool_manager(url: str | None = None) -> PoolManager:
+    proxy = URLFile._proxy_for(url) if url is not None else None
+    if proxy is not None:
+      if proxy not in URLFile._proxy_managers:
+        # SSL_CERT_FILE is already picked up by OpenSSL's default verify paths
+        ca_certs = os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE")
+        URLFile._proxy_managers[proxy] = ProxyManager(proxy, ca_certs=ca_certs, **URLFile._pool_kwargs())
+      return URLFile._proxy_managers[proxy]
+
     if URLFile._pool_manager is None:
-      socket_options = [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
-      retries = Retry(total=5, backoff_factor=0.5, status_forcelist=[409, 429, 503, 504])
-      URLFile._pool_manager = PoolManager(num_pools=10, maxsize=100, socket_options=socket_options, retries=retries)
+      URLFile._pool_manager = PoolManager(**URLFile._pool_kwargs())
     return URLFile._pool_manager
 
   def __init__(self, url: str, timeout: int = 10, cache: bool | None = None):
@@ -90,7 +115,7 @@ class URLFile:
 
   def _request(self, method: str, url: str, headers: dict[str, str] | None = None) -> BaseHTTPResponse:
     try:
-      return URLFile.pool_manager().request(method, url, timeout=self._timeout, headers=headers)
+      return URLFile.pool_manager(url).request(method, url, timeout=self._timeout, headers=headers)
     except MaxRetryError as e:
       raise URLFileException(f"Failed to {method} {url}: {e}") from e
 

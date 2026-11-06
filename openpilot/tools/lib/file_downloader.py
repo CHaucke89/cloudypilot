@@ -223,7 +223,7 @@ def cmd_download(args):
     # Stream the file in a single HTTP request instead of making
     # a separate Range request per chunk (which was very slow).
     from openpilot.tools.lib.url_file import URLFile
-    pool = URLFile.pool_manager()
+    pool = URLFile.pool_manager(url)
     r = pool.request("GET", url, preload_content=False)
     if r.status not in (200, 206):
       sys.stderr.write(f"ERROR:HTTP {r.status}\n")
