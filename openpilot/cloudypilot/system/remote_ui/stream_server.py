@@ -191,12 +191,9 @@ class SharedMemoryReader:
           print("Shared memory exists but is empty (0 bytes)")
           return False
         elif actual_size < SHM_SIZE:
+          # The UI grows the file in place before writing frames; try again shortly.
           print(f"Shared memory exists but is smaller than expected: {actual_size} < {SHM_SIZE}")
-          # Try to map with the actual size instead
-          self.shm_fd = os.open(shm_path, os.O_RDONLY)
-          self.shm_map = mmap.mmap(self.shm_fd, actual_size, mmap.MAP_SHARED, mmap.PROT_READ)
-          print(f"Connected to shared memory with reduced size: {actual_size} bytes")
-          return True
+          return False
         else:
           # Normal case - full size available
           self.shm_fd = os.open(shm_path, os.O_RDONLY)
@@ -251,6 +248,7 @@ class SharedMemoryReader:
     def monitor_loop():
       retry_count = 0
       frame_count = 0
+      last_inode_check = 0.0
 
       while self.running:
         # Try to connect if not connected
@@ -260,6 +258,16 @@ class SharedMemoryReader:
           else:
             retry_count += 1
             time.sleep(2 if retry_count < 10 else 10)
+            continue
+
+        # The UI may have recreated the segment (e.g. an older build that unlinked it); an mmap
+        # stays bound to the old inode, which would freeze the stream on its last frame.
+        now = time.monotonic()
+        if now - last_inode_check >= 1.0:
+          last_inode_check = now
+          if self.segment_replaced():
+            print("Shared memory segment was replaced, reconnecting")
+            self.disconnect()
             continue
 
         # Read frame
@@ -283,13 +291,28 @@ class SharedMemoryReader:
     thread.start()
     print("Frame monitoring started")
 
+  def segment_replaced(self) -> bool:
+    """True if the file at the shm path is no longer the one we have mapped."""
+    if self.shm_fd is None:
+      return False
+    try:
+      return os.stat(f"/dev/shm{SHM_NAME}").st_ino != os.fstat(self.shm_fd).st_ino
+    except FileNotFoundError:
+      return True
+
+  def disconnect(self):
+    if self.shm_map:
+      self.shm_map.close()
+    if self.shm_fd is not None:
+      os.close(self.shm_fd)
+    self.shm_map = None
+    self.shm_fd = None
+    self.last_timestamp = 0
+
   def close(self):
     """Clean up shared memory connection"""
     self.running = False
-    if self.shm_map:
-      self.shm_map.close()
-    if self.shm_fd:
-      os.close(self.shm_fd)
+    self.disconnect()
 
 
 shm_reader = SharedMemoryReader()

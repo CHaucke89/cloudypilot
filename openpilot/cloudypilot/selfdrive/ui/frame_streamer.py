@@ -13,14 +13,15 @@ import io
 import struct
 import threading
 import time
-from multiprocessing import shared_memory as shm
+import mmap
+import os
 
 from PIL import Image
 import pyray as pr
 
 from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateReader
 
-SHM_NAME = "openpilot_ui_frames"  # created at /dev/shm/openpilot_ui_frames
+SHM_PATH = "/dev/shm/openpilot_ui_frames"
 FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes (max 1080p RGBA)
 METADATA_SIZE = 31
 SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE
@@ -153,22 +154,18 @@ class FrameStreamer:
       self.last_adapt_time = now_mono
 
   def _init_shm(self):
-    # Match the C++ behavior: unlink any stale segment, then (re)create.
+    # Reuse the segment if it exists and never unlink it: stream_server's mmap is bound to the
+    # inode, so a recreated file would leave it reading the old copy (one frozen frame) forever.
     try:
-      stale = shm.SharedMemory(name=SHM_NAME)
-      stale.close()
-      stale.unlink()
-    except FileNotFoundError:
-      pass
-    except Exception as e:
-      print(f"FrameStreamer: could not clear stale shm: {e}")
-
-    try:
-      self.shm = shm.SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
+      fd = os.open(SHM_PATH, os.O_RDWR | os.O_CREAT, 0o644)
+      try:
+        if os.fstat(fd).st_size < SHM_SIZE:
+          os.ftruncate(fd, SHM_SIZE)
+        self.shm = mmap.mmap(fd, SHM_SIZE, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE)
+      finally:
+        os.close(fd)
       # Zero the header so a reader never sees a stale ready flag.
-      buf = self.shm.buf
-      assert buf is not None
-      buf[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
+      self.shm[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
       print(f"FrameStreamer: shared memory ready ({SHM_SIZE} bytes)")
     except Exception as e:
       print(f"FrameStreamer: failed to init shared memory: {e}")
@@ -271,7 +268,7 @@ class FrameStreamer:
         self._last_rgba = None
         return
 
-      shm_buf = self.shm.buf if self.shm is not None else None
+      shm_buf = self.shm
       if shm_buf is None:
         return
 
@@ -301,7 +298,7 @@ class FrameStreamer:
 
   def _republish_last(self, capture_ms, capture_mono):
     """Re-announce the JPEG already in shm under a new timestamp. Only the header is rewritten."""
-    shm_buf = self.shm.buf if self.shm is not None else None
+    shm_buf = self.shm
     if shm_buf is None or self._last_header is None:
       return
     shm_buf[0:METADATA_SIZE] = struct.pack(HEADER_FMT, capture_ms, *self._last_header)
@@ -320,8 +317,8 @@ class FrameStreamer:
     self.client_state.close()
     if self.shm is not None:
       try:
+        self.shm[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE  # not ready; the file itself stays
         self.shm.close()
-        self.shm.unlink()
       except Exception:
         pass
       self.shm = None
