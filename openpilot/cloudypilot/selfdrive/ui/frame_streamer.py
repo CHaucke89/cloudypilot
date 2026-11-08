@@ -43,6 +43,9 @@ SCALE_STEPS = (0.5,)
 MAX_BROWSER_UPSCALE = 1.33
 # Queueing delay browsers can see before the link counts as congested.
 NETWORK_DELAY_BUDGET_MS = 250.0
+# While the screen is unchanged no new JPEG is encoded, but the previous one is re-announced
+# this often so browsers keep seeing frames (FPS, latency) and the stream doesn't look stalled.
+UNCHANGED_KEEPALIVE_S = 1.0
 
 
 class FrameStreamer:
@@ -56,6 +59,11 @@ class FrameStreamer:
     self.jpeg_quality = JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
     self.last_adapt_time = 0.0
+    # Last published frame, to skip re-encoding when the screen hasn't changed (worker thread only).
+    self._last_rgba = None
+    self._last_encode_key = None
+    self._last_header = None  # header fields after the timestamp
+    self._last_publish_mono = 0.0
     # Adaptive rate/quality state is written by both the render thread (connect/disconnect) and the worker.
     self._state_lock = threading.Lock()
     self._init_shm()
@@ -216,11 +224,21 @@ class FrameStreamer:
       if data_size <= 0:
         return
 
-      # One pass out of raylib's RGBA buffer into an owned RGB image (JPEG has no alpha),
-      # so the buffer can be freed below. load_image_from_screen is already top-to-bottom.
-      pil_img = Image.frombytes("RGB", (width, height), pr.ffi.buffer(rl_image.data, data_size), "raw", "RGBX")
-      # Reducing after dropping alpha is faster than before it (3 channels instead of 4).
+      # Static screens repeat the same pixels for seconds at a time, so skip re-encoding them.
+      # The compare stops at the first differing byte, so a changed frame costs little.
+      frame = pr.ffi.buffer(rl_image.data, data_size)
       scale = self._pick_scale(width)
+      encode_key = (width, height, scale, self.jpeg_quality)
+      if encode_key == self._last_encode_key and frame == self._last_rgba:
+        if capture_mono - self._last_publish_mono >= UNCHANGED_KEEPALIVE_S:
+          self._republish_last(capture_ms, capture_mono)
+        return
+      # Keep a copy to compare against, since raylib's buffer is freed below.
+      rgba = bytes(frame)
+
+      # RGBA into RGB (JPEG has no alpha). load_image_from_screen is already top-to-bottom.
+      pil_img = Image.frombytes("RGB", (width, height), rgba, "raw", "RGBX")
+      # Reducing after dropping alpha is faster than before it (3 channels instead of 4).
       if scale != 1.0:
         pil_img = pil_img.reduce(round(1 / scale))
 
@@ -240,9 +258,7 @@ class FrameStreamer:
       # Write payload first, then the header with ready=1 last, so the
       # reader never sees ready=1 pointing at stale/partial data.
       shm_buf[METADATA_SIZE : METADATA_SIZE + len(jpeg)] = jpeg
-      header = struct.pack(
-        HEADER_FMT,
-        capture_ms,  # epoch timestamp (ms) of the capture, not the encode
+      self._last_header = (
         pil_img.width,
         pil_img.height,
         len(jpeg),
@@ -251,7 +267,12 @@ class FrameStreamer:
         width,
         height,
       )
-      shm_buf[0:METADATA_SIZE] = header
+      # epoch timestamp (ms) of the capture, not the encode
+      shm_buf[0:METADATA_SIZE] = struct.pack(HEADER_FMT, capture_ms, *self._last_header)
+      self._last_publish_mono = capture_mono
+      # Only remembered once published, so a dropped or failed frame is retried.
+      self._last_rgba = rgba
+      self._last_encode_key = encode_key
       with self._state_lock:
         self._update_adaptive_rate(capture_mono, encode_ms, len(jpeg))
     except Exception as e:
@@ -259,6 +280,14 @@ class FrameStreamer:
     finally:
       # Free the raylib image memory to avoid leaking a frame per tick (UnloadImage is a plain free()).
       pr.unload_image(rl_image)
+
+  def _republish_last(self, capture_ms, capture_mono):
+    """Re-announce the JPEG already in shm under a new timestamp. Only the header is rewritten."""
+    shm_buf = self.shm.buf if self.shm is not None else None
+    if shm_buf is None or self._last_header is None:
+      return
+    shm_buf[0:METADATA_SIZE] = struct.pack(HEADER_FMT, capture_ms, *self._last_header)
+    self._last_publish_mono = capture_mono
 
   def close(self):
     # Stop the encoder before unmapping shm so it can't write into a closed segment.
