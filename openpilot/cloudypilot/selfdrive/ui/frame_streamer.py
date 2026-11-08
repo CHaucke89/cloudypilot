@@ -43,8 +43,7 @@ SCALE_STEPS = (0.5,)
 MAX_BROWSER_UPSCALE = 1.33
 # Queueing delay browsers can see before the link counts as congested.
 NETWORK_DELAY_BUDGET_MS = 250.0
-# While the screen is unchanged no new JPEG is encoded, but the previous one is re-announced
-# this often so browsers keep seeing frames (FPS, latency) and the stream doesn't look stalled.
+# Re-announce an unchanged frame this often so browsers don't see the stream as stalled.
 UNCHANGED_KEEPALIVE_S = 1.0
 
 
@@ -59,7 +58,7 @@ class FrameStreamer:
     self.jpeg_quality = JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
     self.last_adapt_time = 0.0
-    # Last published frame, to skip re-encoding when the screen hasn't changed (worker thread only).
+    # Worker thread only.
     self._last_rgba = None
     self._last_encode_key = None
     self._last_header = None  # header fields after the timestamp
@@ -224,8 +223,7 @@ class FrameStreamer:
       if data_size <= 0:
         return
 
-      # Static screens repeat the same pixels for seconds at a time, so skip re-encoding them.
-      # The compare stops at the first differing byte, so a changed frame costs little.
+      # Static screens repeat for seconds at a time. The compare exits at the first differing byte, so it's cheap.
       frame = pr.ffi.buffer(rl_image.data, data_size)
       scale = self._pick_scale(width)
       encode_key = (width, height, scale, self.jpeg_quality)
@@ -236,7 +234,7 @@ class FrameStreamer:
       # Keep a copy to compare against, since raylib's buffer is freed below.
       rgba = bytes(frame)
 
-      # RGBA into RGB (JPEG has no alpha). load_image_from_screen is already top-to-bottom.
+      # JPEG has no alpha. load_image_from_screen is already top-to-bottom.
       pil_img = Image.frombytes("RGB", (width, height), rgba, "raw", "RGBX")
       # Reducing after dropping alpha is faster than before it (3 channels instead of 4).
       if scale != 1.0:
@@ -282,7 +280,7 @@ class FrameStreamer:
       pr.unload_image(rl_image)
 
   def _republish_last(self, capture_ms, capture_mono):
-    """Re-announce the JPEG already in shm under a new timestamp. Only the header is rewritten."""
+    """Re-announce the JPEG already in shm by rewriting only the header."""
     shm_buf = self.shm.buf if self.shm is not None else None
     if shm_buf is None or self._last_header is None:
       return
