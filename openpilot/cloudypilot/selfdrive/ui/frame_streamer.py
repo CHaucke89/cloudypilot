@@ -4,7 +4,7 @@ Python port of the old Qt ``frame_streamer.cc``. Instead of ``QPixmap::grab()``
 on a QWidget, this captures the current raylib framebuffer with
 ``load_image_from_screen()`` and writes a JPEG-compressed frame plus metadata
 into POSIX shared memory. Only the GPU readback happens on the render thread;
-copying the pixels, resizing and JPEG encoding run on a worker thread (Pillow
+converting the pixels, resizing and JPEG encoding run on a worker thread (Pillow
 releases the GIL for those), so encoding doesn't add to UI frame time. ``openpilot.cloudypilot.system.remote_ui.stream_server`` reads that shared memory and
 broadcasts frames to browsers over WebSocket.
 """
@@ -19,16 +19,8 @@ from PIL import Image
 import pyray as pr
 
 from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateReader
+from openpilot.cloudypilot.system.remote_ui.protocol import FORMAT_JPEG, FRAME_DATA_SIZE, HEADER_FMT, METADATA_SIZE, SHM_NAME, SHM_SIZE
 
-SHM_NAME = "openpilot_ui_frames"  # created at /dev/shm/openpilot_ui_frames
-FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes (max 1080p RGBA)
-METADATA_SIZE = 31
-SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE
-
-# timestamp, width, height, size, format, ready, source width, source height (frame size before scaling)
-HEADER_FMT = "<QIIIIBHH2x"
-
-FORMAT_JPEG = 1
 JPEG_QUALITY = 85
 FRAME_RATE_LIMIT = 10  # FPS
 
@@ -43,10 +35,10 @@ ADAPT_RECOVER_S = 2.0
 ADAPT_HIGH_PRESSURE = 1.1
 ADAPT_LOW_PRESSURE = 0.6
 JPEG_SIZE_BUDGET_AT_10_FPS = 220_000
-# Encode scales offered to browsers. Only 0.5 is offered below full: it's an exact 2x2 box
+# Encode scales offered to browsers below full size. Only 0.5: it's an exact 2x2 box
 # reduce, which with the smaller encode costs less than encoding full size. Any other
 # smooth resize (e.g. 0.75 bilinear or box) costs more CPU than the encode it saves.
-SCALE_STEPS = (0.5, 1.0)
+SCALE_STEPS = (0.5,)
 # The browser may upscale by up to this much rather than get the next larger step.
 MAX_BROWSER_UPSCALE = 1.33
 # Queueing delay browsers can see before the link counts as congested.
@@ -64,7 +56,6 @@ class FrameStreamer:
     self.jpeg_quality = JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
     self.last_adapt_time = 0.0
-    self.scale = 1.0
     # Adaptive rate/quality state is written by both the render thread (connect/disconnect) and the worker.
     self._state_lock = threading.Lock()
     self._init_shm()
@@ -204,9 +195,8 @@ class FrameStreamer:
         if not self._running:
           return
         job = self._pending
+        assert job is not None  # the wait above only ends with a job or on stop
         self._pending = None
-        if job is None:
-          continue
         self._encoding = True
       try:
         self._encode(*job)
@@ -226,17 +216,13 @@ class FrameStreamer:
       if data_size <= 0:
         return
 
-      # Copy raw RGBA bytes out of raylib's buffer so it can be freed below.
-      rgba = bytes(pr.ffi.buffer(rl_image.data, data_size))
-
-      # load_image_from_screen already returns top-to-bottom orientation.
-      pil_img = Image.frombuffer("RGBA", (width, height), rgba, "raw", "RGBA", 0, 1)
-
-      pil_img = pil_img.convert("RGB")  # JPEG has no alpha channel
-      # Reducing after the conversion is faster than before it (3 channels instead of 4).
-      self.scale = self._pick_scale(width)
-      if self.scale != 1.0:
-        pil_img = pil_img.reduce(round(1 / self.scale))
+      # One pass out of raylib's RGBA buffer into an owned RGB image (JPEG has no alpha),
+      # so the buffer can be freed below. load_image_from_screen is already top-to-bottom.
+      pil_img = Image.frombytes("RGB", (width, height), pr.ffi.buffer(rl_image.data, data_size), "raw", "RGBX")
+      # Reducing after dropping alpha is faster than before it (3 channels instead of 4).
+      scale = self._pick_scale(width)
+      if scale != 1.0:
+        pil_img = pil_img.reduce(round(1 / scale))
 
       with io.BytesIO() as out:
         pil_img.save(out, format="JPEG", quality=self.jpeg_quality)

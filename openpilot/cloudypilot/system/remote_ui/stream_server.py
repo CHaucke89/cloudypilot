@@ -21,24 +21,16 @@ ensure_deps()
 from flask import Flask, render_template_string, request, jsonify, Response, send_from_directory
 from flask_sock import Sock
 from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateWriter
+from openpilot.cloudypilot.system.remote_ui.protocol import FORMAT_JPEG, HEADER_FMT, METADATA_SIZE, SHM_NAME, SHM_SIZE, TOUCH_SOCKET_PATH
 
 app = Flask(__name__)
 sock = Sock(app)
-
-# Shared memory configuration
-SHM_NAME = "/openpilot_ui_frames"
-# Match C++ SharedFrame packed struct:
-# timestamp(8) + width(4) + height(4) + size(4) + format(4) + ready(1) + padding(6) = 31 bytes, then data
-FRAME_DATA_SIZE = 4 * 1920 * 1080  # 8,294,400 bytes
-METADATA_SIZE = 31  # Packed struct metadata
-SHM_SIZE = METADATA_SIZE + FRAME_DATA_SIZE  # Total size
-
-TOUCH_SOCKET_PATH = '/tmp/ui_touch_socket'
 
 # Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4) + source width(2) + source height(2),
 # then JPEG bytes. Source size is the UI's real resolution, which input coordinates are in.
 FRAME_MSG_TYPE = 1
 FRAME_HEADER_FMT = '<BQIIHH'
+FRAME_HEADER_SIZE = struct.calcsize(FRAME_HEADER_FMT)
 
 # Client feedback older than this no longer counts towards the published network delay
 FEEDBACK_STALE_S = 3.0
@@ -142,13 +134,14 @@ class FrameCache:
     self.latest_timestamp = 0
     self.latest_frame = None
 
-  def add_frame(self, timestamp: int, data: bytes, width: int, height: int, source_width: int = 0, source_height: int = 0):
+  def add_frame(self, timestamp: int, data: bytes, width: int, height: int, source_width: int, source_height: int):
     with self.lock:
       if timestamp > self.latest_timestamp:
-        # Pack the WebSocket message once here instead of once per client.
+        # Pack the WebSocket message once here instead of once per client; 'data' is a view into it.
         packet = struct.pack(FRAME_HEADER_FMT, FRAME_MSG_TYPE, timestamp, width, height,
                              source_width or width, source_height or height) + data
-        frame_info = {'timestamp': timestamp, 'data': data, 'packet': packet, 'size': len(data), 'width': width, 'height': height}
+        frame_info = {'timestamp': timestamp, 'data': memoryview(packet)[FRAME_HEADER_SIZE:], 'packet': packet,
+                      'size': len(data), 'width': width, 'height': height}
         self.frames.append(frame_info)
         self.latest_timestamp = timestamp
         self.latest_frame = frame_info
@@ -180,7 +173,7 @@ class SharedMemoryReader:
     """Connect to shared memory created by Qt application"""
     try:
       # Open existing shared memory
-      shm_path = f"/dev/shm{SHM_NAME}"
+      shm_path = f"/dev/shm/{SHM_NAME}"
 
       # Check if file exists and get its size
       if os.path.exists(shm_path):
@@ -217,29 +210,18 @@ class SharedMemoryReader:
       return None
 
     try:
-      # Read metadata - matching C++ packed SharedFrame struct
-      self.shm_map.seek(0)
-      timestamp = struct.unpack('<Q', self.shm_map.read(8))[0]  # uint64_t (little-endian)
-      width = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
-      height = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
-      size = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
-      format_type = struct.unpack('<I', self.shm_map.read(4))[0]  # uint32_t
-      ready = struct.unpack('B', self.shm_map.read(1))[0]  # uint8_t
-
-      # Source (pre-scaling) size, then 2 bytes of padding. Zero from writers that predate scaling.
-      source_width, source_height = struct.unpack('<HH', self.shm_map.read(4))
-      self.shm_map.read(2)
+      # Source (pre-scaling) size is zero from writers that predate scaling.
+      timestamp, width, height, size, format_type, ready, source_width, source_height = struct.unpack_from(HEADER_FMT, self.shm_map, 0)
 
       if ready == 0 or size == 0 or timestamp <= self.last_timestamp:
         return None
 
-      # Data starts right after padding (at offset 31)
-      frame_data = self.shm_map.read(size)
+      frame_data = self.shm_map[METADATA_SIZE : METADATA_SIZE + size]
 
       self.last_timestamp = timestamp
 
       return {'timestamp': timestamp, 'width': width, 'height': height, 'source_width': source_width, 'source_height': source_height,
-              'size': size, 'format': 'jpeg' if format_type == 1 else 'raw', 'data': frame_data}
+              'size': size, 'format': 'jpeg' if format_type == FORMAT_JPEG else 'raw', 'data': frame_data}
     except Exception as e:
       print(f"Error reading frame: {e}")
       return None
