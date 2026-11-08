@@ -10,7 +10,7 @@ remote client is active.
 Clients may either send a single JSON object per connection (legacy) or keep
 a connection open and stream newline-delimited JSON objects.
 
-Keyboard events (``keydown``/``keyup``/``keytap`` with a browser ``KeyboardEvent.key``
+Keyboard events (``keydown``/``keyup`` with a browser ``KeyboardEvent.key``
 name, and ``text`` for typed or pasted strings) are queued and handed to the UI
 one frame at a time by ``end_frame()``, which the render loop calls once per frame,
 mirroring how raylib fills its key and char queues in ``PollInputEvents``.
@@ -26,7 +26,7 @@ from collections import deque
 
 import pyray as pr
 
-SOCKET_PATH = "/tmp/ui_touch_socket"
+from openpilot.cloudypilot.system.remote_ui.protocol import TOUCH_SOCKET_PATH as SOCKET_PATH
 
 # How long a synthetic "click"/"tap" is held down before releasing, so the UI
 # sees a full press -> release cycle across polled frames.
@@ -67,8 +67,7 @@ def browser_key_to_raylib(key) -> int:
     return 0
   name = BROWSER_KEY_NAMES.get(key)
   if name is None and len(key) == 1 and key.isascii() and key.isalnum():
-    name = key.upper()  # raylib's KEY_A..KEY_Z and KEY_ZERO..KEY_NINE are their ASCII codes
-    return ord(name)
+    return ord(key.upper())  # raylib's KEY_A..KEY_Z and KEY_ZERO..KEY_NINE are their ASCII codes
   return int(getattr(pr, f"KEY_{name}", 0)) if name else 0
 
 
@@ -77,30 +76,11 @@ class TouchInjector:
     # Optional callable; while it returns True remote input is dropped and
     # local touch stays in control (e.g. while engaged).
     self._input_blocked = input_blocked or (lambda: False)
+    self._blocked = False
     self.running = False
     self.thread = None
     self._lock = threading.Lock()
-
-    self._last_msg_time = 0.0
-    self._x = 0
-    self._y = 0
-    self._down = False
-    self._down_until = None
-    self._need_release = False
-    self._pressed_consumed = True
-    self._wheel = 0.0
-
-    # Keyboard: events since the last end_frame() ...
-    self._key_last_msg_time = 0.0
-    self._held_keys: set[int] = set()
-    self._pending_presses: list[int] = []
-    self._pending_releases: set[int] = set()
-    self._pending_chars: list[int] = []
-    # ... and what the UI sees during the current frame.
-    self._frame_key_queue: deque[int] = deque()
-    self._frame_pressed: set[int] = set()
-    self._frame_released: set[int] = set()
-    self._frame_char_queue: deque[int] = deque()
+    self._reset_remote_state()
 
     # Keep references to the genuine pyray functions for local fallback.
     self._orig_get_touch_position = pr.get_touch_position
@@ -197,16 +177,17 @@ class TouchInjector:
 
     msg_type = msg.get("type", "click")
     now = time.monotonic()
-    if self._is_blocked():
-      return
-
-    if msg_type in ("keydown", "keyup", "keytap", "text"):
-      # Keyboard events leave the pointer alone, so they don't take over local touch.
-      with self._lock:
-        self._process_key_message(msg_type, msg, now)
-      return
-
+    blocked = self._check_blocked()
     with self._lock:
+      self._set_blocked(blocked)
+      if blocked:
+        return
+
+      if msg_type in ("keydown", "keyup", "text"):
+        # Keyboard events leave the pointer alone, so they don't take over local touch.
+        self._process_key_message(msg_type, msg, now)
+        return
+
       self._last_msg_time = now
       if "x" in msg and "y" in msg:
         self._x = int(msg["x"])
@@ -237,7 +218,7 @@ class TouchInjector:
 
     key = msg.get("key")
     code = browser_key_to_raylib(key)
-    if msg_type in ("keydown", "keytap"):
+    if msg_type == "keydown":
       if msg.get("repeat"):
         # Auto-repeat just keeps the key held; the UI does its own repeat via is_key_down.
         return
@@ -246,7 +227,7 @@ class TouchInjector:
       if code:
         self._pending_presses.append(code)
         self._held_keys.add(code)
-    if code and msg_type in ("keyup", "keytap"):
+    elif code:
       self._pending_releases.add(code)
 
   def _queue_chars(self, text):
@@ -254,9 +235,11 @@ class TouchInjector:
     self._pending_chars.extend(ord(c) for c in text[:max(0, room)])
 
   def end_frame(self):
-    """Publish keyboard events received since the last call. Call once per rendered frame."""
+    """Apply the input gate and publish keyboard events received since the last call. Call once per rendered frame."""
     now = time.monotonic()
+    blocked = self._check_blocked()
     with self._lock:
+      self._set_blocked(blocked)
       if self._held_keys and (now - self._key_last_msg_time) >= KEY_HOLD_TIMEOUT_S:
         self._pending_releases |= self._held_keys
 
@@ -290,36 +273,40 @@ class TouchInjector:
     if self._down and self._down_until is not None and now >= self._down_until:
       self._release()
 
-  def refresh_blocked(self):
-    """Called once per frame so a press in progress is dropped as soon as the gate closes."""
-    self._is_blocked()
-
-  def _is_blocked(self):
+  def _check_blocked(self):
     try:
-      blocked = bool(self._input_blocked())
+      return bool(self._input_blocked())
     except Exception:
-      blocked = False
-    if blocked:
-      with self._lock:
-        self._drop_remote_state()
-    return blocked
+      return False
 
-  def _drop_remote_state(self):
-    # Hand control straight back to local input and forget any held press.
+  def _set_blocked(self, blocked):
+    """Caller holds the lock. Remote state is dropped once, when the gate closes."""
+    if blocked and not self._blocked:
+      self._reset_remote_state()
+    self._blocked = blocked
+
+  def _reset_remote_state(self):
+    # No remote client: local input is in control and nothing is held.
     self._last_msg_time = 0.0
+    self._x = 0
+    self._y = 0
     self._down = False
     self._down_until = None
     self._need_release = False
     self._pressed_consumed = True
     self._wheel = 0.0
-    self._held_keys.clear()
-    self._pending_presses.clear()
-    self._pending_releases.clear()
-    self._pending_chars.clear()
-    self._frame_key_queue.clear()
-    self._frame_pressed.clear()
-    self._frame_released.clear()
-    self._frame_char_queue.clear()
+
+    # Keyboard: events since the last end_frame() ...
+    self._key_last_msg_time = 0.0
+    self._held_keys: set[int] = set()
+    self._pending_presses: list[int] = []
+    self._pending_releases: set[int] = set()
+    self._pending_chars: list[int] = []
+    # ... and what the UI sees during the current frame.
+    self._frame_key_queue: deque[int] = deque()
+    self._frame_pressed: set[int] = set()
+    self._frame_released: set[int] = set()
+    self._frame_char_queue: deque[int] = deque()
 
   def _remote_active(self, now):
     return (now - self._last_msg_time) < REMOTE_TIMEOUT_S

@@ -122,12 +122,12 @@ function sendFeedback(force = false) {
   }));
 }
 
-function drawFrame(source, width, height) {
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-    frameWidth = width;
-    frameHeight = height;
+function drawFrame(source) {
+  if (canvas.width !== source.width || canvas.height !== source.height) {
+    canvas.width = source.width;
+    canvas.height = source.height;
+    frameWidth = source.width;
+    frameHeight = source.height;
     layoutCanvas();
   }
 
@@ -144,7 +144,7 @@ function drawFrame(source, width, height) {
 function decodeFrame(blob) {
   if (window.createImageBitmap) {
     return createImageBitmap(blob).then(bitmap => {
-      drawFrame(bitmap, bitmap.width, bitmap.height);
+      drawFrame(bitmap);
       bitmap.close();
     });
   }
@@ -153,7 +153,7 @@ function decodeFrame(blob) {
     const url = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
-      drawFrame(img, img.width, img.height);
+      drawFrame(img);
       URL.revokeObjectURL(url);
       resolve();
     };
@@ -196,8 +196,8 @@ function handleBinaryMessage(buffer) {
   const timestamp = Number(view.getBigUint64(1, true));
   const width = view.getUint32(9, true);
   const height = view.getUint32(13, true);
-  const sourceWidth = view.getUint16(17, true) || width;
-  const sourceHeight = view.getUint16(19, true) || height;
+  const sourceWidth = view.getUint16(17, true);
+  const sourceHeight = view.getUint16(19, true);
   if (sourceWidth !== deviceWidth || sourceHeight !== deviceHeight) {
     deviceWidth = sourceWidth;
     deviceHeight = sourceHeight;
@@ -462,8 +462,8 @@ function isForwardableKey(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) {
     return false;  // leave browser shortcuts (copy, paste, reload...) alone
   }
-  return e.key && e.key !== 'Unidentified' && e.key !== 'Process' && e.key !== 'Dead' &&
-    (e.key.length === 1 || NAMED_KEYS.has(e.key));
+  // Also rejects 'Unidentified', 'Process' and 'Dead' (IME/compose), which are neither.
+  return !!e.key && (e.key.length === 1 || NAMED_KEYS.has(e.key));
 }
 
 function releaseHeldKeys() {
@@ -531,7 +531,6 @@ function requestedViewWidth() {
 }
 
 function sendView() {
-  resToggle.textContent = `Res: ${resMode.label}`;
   const width = requestedViewWidth();
   if (!ws || ws.readyState !== WebSocket.OPEN || !width) {
     return;
@@ -549,6 +548,7 @@ function scheduleSendView() {
 
 resToggle.addEventListener('click', () => {
   resMode = RES_MODES[(RES_MODES.indexOf(resMode) + 1) % RES_MODES.length];
+  resToggle.textContent = `Res: ${resMode.label}`;
   try {
     localStorage.setItem('remoteUiRes', resMode.id);
   } catch (e) {
@@ -564,6 +564,7 @@ if (window.visualViewport) {
 }
 
 // Start WebSocket connection
+resToggle.textContent = `Res: ${resMode.label}`;
 layoutCanvas();
 sendView();
 connectWebSocket();
