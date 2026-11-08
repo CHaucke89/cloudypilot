@@ -50,7 +50,6 @@ function updateQueueDelay(now, sampleLatency) {
   queueDelay = Math.max(0, sampleLatency - baseline);
 }
 
-// FPS calculation
 function updateStats() {
   const now = Date.now();
   const elapsed = now - lastFpsTime;
@@ -247,7 +246,6 @@ function connectWebSocket() {
     lastSentViewWidth = null;  // a new connection starts with no request on the server
     sendView();
 
-    // Request initial frame
     ws.send(JSON.stringify({ type: 'request_frame' }));
   };
 
@@ -278,7 +276,6 @@ function connectWebSocket() {
     statusText.textContent = 'Disconnected - Reconnecting...';
     debug.textContent = `Disconnected: ${event.reason || 'Connection lost'}`;
 
-    // Reconnect after 2 seconds
     if (!reconnectTimer) {
       reconnectTimer = setTimeout(connectWebSocket, 2000);
     }
@@ -290,18 +287,15 @@ function connectWebSocket() {
   };
 }
 
-// Check for stale frames
 setInterval(() => {
   if (isConnected && Date.now() - lastFrameTime > 5000) {
     debug.textContent = 'No frames received for 5 seconds';
-    // Request a frame
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'request_frame' }));
     }
   }
 }, 5000);
 
-// Touch/click handling
 function getDeviceCoordinates(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = deviceWidth / rect.width;
@@ -346,7 +340,6 @@ let dragStartX = 0;
 let dragStartY = 0;
 const dragThreshold = 8;
 
-// Mouse events
 canvas.addEventListener('mousedown', (e) => {
   const coords = getDeviceCoordinates(e.clientX, e.clientY);
   mouseDown = true;
@@ -409,7 +402,6 @@ canvas.addEventListener('wheel', (e) => {
   sendInput({ type: 'scroll', x: coords.x, y: coords.y, deltaY: e.deltaY });
 }, { passive: false });
 
-// Touch events
 canvas.addEventListener('touchstart', (e) => {
   e.preventDefault();
   if (e.touches.length === 1) {
@@ -563,13 +555,11 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', scheduleSendView);
 }
 
-// Start WebSocket connection
 resToggle.textContent = `Res: ${resMode.label}`;
 layoutCanvas();
 sendView();
 connectWebSocket();
 
-// Update stats periodically
 setInterval(updateStats, 100);
 setInterval(() => sendFeedback(false), 500);
 

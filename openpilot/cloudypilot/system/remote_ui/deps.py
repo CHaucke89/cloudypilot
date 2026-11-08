@@ -1,9 +1,4 @@
-"""
-Ensures the remote UI stream server's third-party dependencies are importable.
-
-AGNOS updates replace the system venv, wiping anything pip-installed into it. Missing packages are
-installed into a directory on /data instead, which survives OS updates, and that directory is put on sys.path.
-"""
+"""Installs missing deps to /data, since AGNOS updates replace the system venv."""
 
 import importlib
 import shutil
@@ -12,7 +7,6 @@ import sys
 
 DEPS_DIR = "/data/cloudypilot/pydeps"
 
-# import name -> pip requirement
 REQUIREMENTS = {
   "flask": "flask",
   "flask_sock": "flask-sock",

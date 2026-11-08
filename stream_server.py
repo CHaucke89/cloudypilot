@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Compatibility wrapper for cloudypilot remote UI stream server.
-
-Canonical implementation lives at:
-openpilot/cloudypilot/system/remote_ui/stream_server.py
-"""
+"""Shim for launchers that still run stream_server.py from the repo root."""
 
 import runpy
 

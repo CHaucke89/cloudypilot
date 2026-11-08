@@ -1,12 +1,3 @@
-"""Remote UI bootstrap for the raylib/pyray openpilot UI.
-
-Python equivalent of the old Qt ``main.cc``, which constructed a
-``TouchInjector`` and a ``FrameStreamer`` and started them alongside the
-``MainWindow``. The new openpilot UI has no ``main.cc`` to replace; it runs a
-raylib render loop (``selfdrive/ui/ui.py``). So instead of owning ``main``,
-this module exposes a single object you splice into that existing loop.
-"""
-
 from openpilot.cloudypilot.selfdrive.ui.frame_streamer import FrameStreamer
 from openpilot.cloudypilot.selfdrive.ui.touch_injector import TouchInjector
 
@@ -37,8 +28,7 @@ class RemoteUI:
 
 
 if __name__ == "__main__":
-  # Standalone smoke test: open a window, draw a moving box, stream it, and
-  # report remote clicks. Run openpilot/cloudypilot/system/remote_ui/stream_server.py separately and open the page.
+  # Smoke test without the full UI; run stream_server.py separately and open the page.
   import pyray as pr
 
   injector = TouchInjector()
