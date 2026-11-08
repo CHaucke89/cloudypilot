@@ -1,20 +1,4 @@
-"""Touch/mouse/keyboard injector for the raylib/pyray openpilot UI.
-
-Python port of the old Qt ``touch_injector.cc``. The Qt version received JSON
-input events on a Unix socket and synthesized ``QMouseEvent``/``QWheelEvent``
-objects. raylib has no event queue to post into: input is *polled* every frame
-(``is_mouse_button_pressed`` etc.). So instead we monkeypatch pyray's input
-functions to report remote state, falling back to the real functions when no
-remote client is active.
-
-Clients may either send a single JSON object per connection (legacy) or keep
-a connection open and stream newline-delimited JSON objects.
-
-Keyboard events (``keydown``/``keyup`` with a browser ``KeyboardEvent.key``
-name, and ``text`` for typed or pasted strings) are queued and handed to the UI
-one frame at a time by ``end_frame()``, which the render loop calls once per frame,
-mirroring how raylib fills its key and char queues in ``PollInputEvents``.
-"""
+"""raylib polls input rather than queueing events, so remote input is injected by patching pyray's input functions."""
 
 import json
 import os
@@ -98,8 +82,6 @@ class TouchInjector:
 
     self._setup_socket()
     self._apply_hooks()
-
-  # --- socket ------------------------------------------------------------
 
   def _setup_socket(self):
     if os.path.exists(SOCKET_PATH):
@@ -194,7 +176,6 @@ class TouchInjector:
         self._y = int(msg["y"])
 
       if msg_type in ("click", "tap", "touch"):
-        # Instantaneous tap: press now, auto-release shortly after.
         self._begin_press(now, hold=True)
       elif msg_type in ("mousedown", "touchstart"):
         self._begin_press(now, hold=False)
@@ -269,7 +250,6 @@ class TouchInjector:
     self._down_until = None
 
   def _refresh(self, now):
-    """Advance the tap auto-release timer."""
     if self._down and self._down_until is not None and now >= self._down_until:
       self._release()
 

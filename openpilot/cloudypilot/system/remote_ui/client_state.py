@@ -1,22 +1,10 @@
-"""Remote UI client connection state shared between stream_server and the UI.
-
-Replaces the ``RemoteUIClientConnected`` param. Param writes go through a
-tmp file + fsync + rename, which is far too heavy to do from the streaming
-path. Instead, ``stream_server`` owns a tiny POSIX shared memory segment at
-``/dev/shm/openpilot_ui_clients`` holding the current WebSocket client count,
-the worst network queueing delay reported by those clients and the widest
-frame any of them asked for, and the UI maps it read-only. Reads are a plain memory access, no syscalls.
-
-The writer never unlinks the segment: a reader's mmap is bound to the inode,
-so recreating the file would leave readers looking at a stale copy forever.
-"""
+"""Shared memory instead of params, since param writes (tmp file + fsync + rename) are too slow to stream."""
 
 import mmap
 import os
 import struct
 
 SHM_PATH = "/dev/shm/openpilot_ui_clients"
-# One uint32 per field, at index * FIELD_SIZE
 CLIENT_COUNT, NETWORK_DELAY_MS, REQUESTED_WIDTH = range(3)
 FIELD_FMT = "<I"
 FIELD_SIZE = struct.calcsize(FIELD_FMT)
@@ -24,7 +12,7 @@ STATE_SIZE = 3 * FIELD_SIZE
 
 
 class ClientStateWriter:
-  """Owned by stream_server. Publishes the number of connected browsers and their network delay."""
+  """Single writer, owned by stream_server."""
 
   def __init__(self):
     fd = os.open(SHM_PATH, os.O_RDWR | os.O_CREAT, 0o644)
@@ -49,12 +37,13 @@ class ClientStateWriter:
     self._set(REQUESTED_WIDTH, width)
 
   def close(self) -> None:
+    # Never unlink: readers' mmaps are bound to the inode and would keep reading a stale copy.
     self._map[:] = bytes(STATE_SIZE)
     self._map.close()
 
 
 class ClientStateReader:
-  """Used by the UI process. Cheap enough to call every frame."""
+  """Cheap enough to call every frame."""
 
   def __init__(self):
     self._map: mmap.mmap | None = None

@@ -1,14 +1,3 @@
-"""Frame streamer for the raylib/pyray openpilot UI.
-
-Python port of the old Qt ``frame_streamer.cc``. Instead of ``QPixmap::grab()``
-on a QWidget, this captures the current raylib framebuffer with
-``load_image_from_screen()`` and writes a JPEG-compressed frame plus metadata
-into POSIX shared memory. Only the GPU readback happens on the render thread;
-converting the pixels, resizing and JPEG encoding run on a worker thread (Pillow
-releases the GIL for those), so encoding doesn't add to UI frame time. ``openpilot.cloudypilot.system.remote_ui.stream_server`` reads that shared memory and
-broadcasts frames to browsers over WebSocket.
-"""
-
 import io
 import struct
 import threading
@@ -22,7 +11,7 @@ from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateReade
 from openpilot.cloudypilot.system.remote_ui.protocol import FORMAT_JPEG, FRAME_DATA_SIZE, HEADER_FMT, METADATA_SIZE, SHM_NAME, SHM_SIZE
 
 JPEG_QUALITY = 85
-FRAME_RATE_LIMIT = 10  # FPS
+FRAME_RATE_LIMIT = 10
 
 DISCONNECTED_FRAME_RATE_LIMIT = 1
 DISCONNECTED_JPEG_QUALITY = 60
@@ -67,8 +56,9 @@ class FrameStreamer:
     self._state_lock = threading.Lock()
     self._init_shm()
 
-    # One-slot handoff to the encoder: the render thread only captures when the worker is idle,
-    # so frames are skipped rather than queued and the readback cost isn't paid for nothing.
+    # Encoding runs off the render thread (Pillow releases the GIL) so it doesn't add to UI frame time.
+    # One-slot handoff: the render thread only captures when the worker is idle, so frames are
+    # skipped rather than queued and the readback cost isn't paid for nothing.
     self._pending = None
     self._pending_cv = threading.Condition()
     self._encoding = False
@@ -141,7 +131,7 @@ class FrameStreamer:
       self.last_adapt_time = now_mono
 
   def _init_shm(self):
-    # Match the C++ behavior: unlink any stale segment, then (re)create.
+    # create=True fails if a previous UI run left the segment behind.
     try:
       stale = shm.SharedMemory(name=SHM_NAME)
       stale.close()
@@ -163,11 +153,7 @@ class FrameStreamer:
       self.shm = None
 
   def stream_frame(self):
-    """Capture the current raylib framebuffer and hand it to the encoder thread.
-
-    Must be called from the render thread while a frame is on screen
-    (i.e. before end_drawing swaps the buffers).
-    """
+    """Call on the render thread before end_drawing swaps the buffers."""
     if self.shm is None:
       return
 
@@ -177,11 +163,10 @@ class FrameStreamer:
       return
     with self._pending_cv:
       if self._encoding or self._pending is not None:
-        return  # encoder still busy with the previous frame; try again next frame
+        return
     self.last_capture_time = now_mono
 
-    # Ensure all queued draw commands are flushed before reading pixels.
-    # This keeps remote captures complete while still sampling before end_drawing().
+    # Otherwise the readback misses draws still sitting in raylib's batch.
     flush_batch = getattr(pr, "rl_draw_render_batch_active", None)
     if callable(flush_batch):
       flush_batch()
@@ -276,7 +261,7 @@ class FrameStreamer:
     except Exception as e:
       print(f"FrameStreamer error: {e}")
     finally:
-      # Free the raylib image memory to avoid leaking a frame per tick (UnloadImage is a plain free()).
+      # UnloadImage is a plain free(), so it's safe off the GL thread.
       pr.unload_image(rl_image)
 
   def _republish_last(self, capture_ms, capture_mono):
