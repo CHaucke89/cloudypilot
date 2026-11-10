@@ -136,7 +136,10 @@ jobs:
           submodules: recursive
           ref: ${{ env.SOURCE_BRANCH }}
       # big_* is the comma four (Chestnut) model; release_files.py leaves it out of tici builds anyway
-      - run: git lfs pull --exclude="openpilot/selfdrive/modeld/models/big_*"
+      - run: tools/lfs_pull.sh --exclude="openpilot/selfdrive/modeld/models/big_*"
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
       - name: Set environment variables
         run: |
