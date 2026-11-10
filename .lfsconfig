@@ -1,5 +1,5 @@
 [lfs]
-	url = https://github.com/CHaucke89/cloudypilot.git/info/lfs
+	url = https://git.chrishaucke.com/CHaucke/cloudypilot.git/info/lfs
 	locksverify = false
 
 [remote "upstream"]

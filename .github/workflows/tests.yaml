@@ -43,10 +43,13 @@ jobs:
         submodules: true
     - name: Getting LFS files
       uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60
+      env:
+        CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+        CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
       with:
         timeout_minutes: 2
         max_attempts: 3
-        command: git lfs pull
+        command: tools/lfs_pull.sh
     - name: Build devel
       timeout-minutes: 3
       run: TARGET_DIR=$STRIPPED_DIR tools/release/build_stripped.sh
