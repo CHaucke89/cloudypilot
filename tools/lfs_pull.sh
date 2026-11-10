@@ -9,15 +9,15 @@ set -euo pipefail
 GITHUB_LFS_URL="https://github.com/CHaucke89/cloudypilot.git/info/lfs"
 ROOT="$(git rev-parse --show-toplevel)"
 
-args=()
+git_cmd=(git)
 if [ -n "${CF_ACCESS_CLIENT_ID:-}" ] && [ -n "${CF_ACCESS_CLIENT_SECRET:-}" ]; then
   LFS_URL="$(git config -f "$ROOT/.lfsconfig" lfs.url)"
   LFS_ORIGIN="$(echo "$LFS_URL" | sed -E 's|^(https?://[^/]+)/.*|\1/|')"
-  args+=(-c "http.$LFS_ORIGIN.extraHeader=CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID")
-  args+=(-c "http.$LFS_ORIGIN.extraHeader=CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET")
+  git_cmd+=(-c "http.$LFS_ORIGIN.extraHeader=CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID")
+  git_cmd+=(-c "http.$LFS_ORIGIN.extraHeader=CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET")
 fi
 
-if ! git ${args[@]+"${args[@]}"} lfs pull "$@"; then
+if ! "${git_cmd[@]}" lfs pull "$@"; then
   echo "LFS pull from the Gitea mirror failed, fetching what's missing from GitHub" >&2
   git -c lfs.url="$GITHUB_LFS_URL" lfs pull "$@"
 fi
