@@ -190,6 +190,9 @@ class SidebarCP(Widget, SidebarSP):
                          self._mic_indicator_rect.y + (self._mic_indicator_rect.height - self._mic_img.height) / 2), 0.0, 1.0, Colors.WHITE)
 
   def _draw_network_indicator(self, rect: rl.Rectangle):
+    if not ui_state.sidebar_show_network:
+      return
+
     # Signal strength dots
     x_start = rect.x + 58
     y_pos = rect.y + 196
@@ -210,6 +213,9 @@ class SidebarCP(Widget, SidebarSP):
   def _draw_metrics(self, rect: rl.Rectangle):
     if gui_app.cloudypilot_ui():
       metrics, start_y, spacing = SidebarSP._draw_metrics_w_sunnylink(self, rect, self._temp_status, self._panda_status, self._connect_status)
+      shown = (ui_state.sidebar_show_temp, ui_state.sidebar_show_vehicle, ui_state.sidebar_show_connect, ui_state.sidebar_show_sunnylink)
+      # Spacing stays sized for all four so hidden metrics don't spread the rest apart
+      metrics = [metric for metric, show in zip(metrics, shown, strict=True) if show]
       for idx, metric in enumerate(metrics):
         self._draw_metric(rect, metric, start_y + idx * spacing)
 
