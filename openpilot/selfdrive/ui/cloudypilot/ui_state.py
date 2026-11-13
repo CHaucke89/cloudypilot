@@ -11,11 +11,21 @@ class UIStateCP:
     self.sidebar_show_vehicle: bool = True
     self.sidebar_show_connect: bool = True
     self.sidebar_show_sunnylink: bool = True
+    self.sidebar_show_storage: bool = False
+    self.sidebar_show_gps: bool = False
+    self.sidebar_show_battery: bool = False
+    self.sidebar_show_remote_ui: bool = False
+    self.sidebar_temp_degrees: bool = False
+    self.shutdown_voltage: float = 11.8
     self._remote_ui_client_state = ClientStateReader()
 
   @property
   def remote_ui_client_connected(self) -> bool:
     return self._remote_ui_client_state.connected()
+
+  @property
+  def remote_ui_client_count(self) -> int:
+    return self._remote_ui_client_state.client_count()
 
   def update_params(self) -> None:
     self.torque_bar_fade = self.params.get_bool("TorqueBarFade")
@@ -26,3 +36,9 @@ class UIStateCP:
     self.sidebar_show_vehicle = self.params.get_bool("SidebarShowVehicle")
     self.sidebar_show_connect = self.params.get_bool("SidebarShowConnect")
     self.sidebar_show_sunnylink = self.params.get_bool("SidebarShowSunnylink")
+    self.sidebar_show_storage = self.params.get_bool("SidebarShowStorage")
+    self.sidebar_show_gps = self.params.get_bool("SidebarShowGps")
+    self.sidebar_show_battery = self.params.get_bool("SidebarShowBattery")
+    self.sidebar_show_remote_ui = self.params.get_bool("SidebarShowRemoteUI")
+    self.sidebar_temp_degrees = self.params.get_bool("SidebarTempDegrees")
+    self.shutdown_voltage = self.params.get("CustomShutdownVoltage", return_default=True)
