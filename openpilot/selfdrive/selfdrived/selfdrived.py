@@ -151,7 +151,6 @@ class SelfdriveD:
     self.state_machine = StateMachine()
     self.rk = Ratekeeper(100, print_delay_threshold=None)
 
-    # remote_ui is a debugging aid and must never cause a disengagement
     self.ignored_processes = {'mapd', 'remote_ui'}
 
     # Determine startup event
