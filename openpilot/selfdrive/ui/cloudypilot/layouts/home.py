@@ -1,11 +1,13 @@
 import pyray as rl
 from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP, HomeLayoutState, HEAD_BUTTON_FONT_SIZE, SPACING
+from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.multilang import tr, trn
 from openpilot.system.ui.widgets.label import gui_label
 from openpilot.selfdrive.ui.cloudypilot.widgets.current_model import ModelWidget
 from openpilot.selfdrive.ui.cloudypilot.widgets.current_branch import BranchWidget
+from openpilot.selfdrive.ui.cloudypilot.widgets.update_now import UpdateNowWidget
 
 BRAND_FONT_SIZE = 48
 BRAND_DESC_SPACING = 12
@@ -17,6 +19,7 @@ class HomeLayoutCP(HomeLayoutSP):
 
     self._model_widget = ModelWidget()
     self._branch_widget = BranchWidget()
+    self._update_widget = UpdateNowWidget()
 
   def _render_header(self):
     font = gui_app.font(FontWeight.MEDIUM)
@@ -69,13 +72,24 @@ class HomeLayoutCP(HomeLayoutSP):
     brand_rect = rl.Rectangle(max(version_left, brand_x), self.header_rect.y, brand_size.x, self.header_rect.height)
     gui_label(brand_rect, brand, BRAND_FONT_SIZE, rl.WHITE, font_weight=FontWeight.AUDIOWIDE)
 
-  def _render_left_column(self):
-    self._model_widget.render(self.left_column_rect)
+  def _card_rects(self, column: rl.Rectangle) -> tuple[rl.Rectangle, rl.Rectangle]:
+    """Split a column into two equal-height cards separated by SPACING."""
+    card_height = (column.height - SPACING) / 2
+    top = rl.Rectangle(column.x, column.y, column.width, card_height)
+    bottom = rl.Rectangle(column.x, column.y + card_height + SPACING, column.width, card_height)
+    return top, bottom
 
-    branch_rect = rl.Rectangle(
-      self.left_column_rect.x,
-      self.left_column_rect.y + 400 + SPACING,
-      self.left_column_rect.width,
-      self.left_column_rect.height
-    )
+  def _render_left_column(self):
+    model_rect, branch_rect = self._card_rects(self.left_column_rect)
+    self._model_widget.render(model_rect)
     self._branch_widget.render(branch_rect)
+
+  def _render_right_column(self):
+    # Setup widget fills the whole column until paired; once paired it's a single card with room for the update card below
+    if not ui_state.prime_state.is_paired():
+      super()._render_right_column()
+      return
+
+    offroad_rect, update_rect = self._card_rects(self.right_column_rect)
+    self._setup_widget.render(offroad_rect)
+    self._update_widget.render(update_rect)
