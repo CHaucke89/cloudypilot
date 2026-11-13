@@ -21,7 +21,6 @@ let renderFps = 0;
 let lastRenderFpsUpdate = Date.now();
 let frameWidth = canvas.width;
 let frameHeight = canvas.height;
-// The UI's real resolution. Frames may arrive downscaled, but input is always in these coordinates.
 let deviceWidth = canvas.width;
 let deviceHeight = canvas.height;
 let inputBlocked = false;
@@ -31,12 +30,9 @@ let inputBlocked = false;
 const FRAME_MSG_TYPE = 1;
 const FRAME_HEADER_SIZE = 21;
 
-// Only one frame is decoded at a time; anything arriving meanwhile replaces the pending frame.
 let decoding = false;
 let pendingFrame = null;
 
-// Queueing delay = latency above the lowest latency seen recently. Device and browser clocks
-// differ by a constant offset, which cancels out, so this is a skew-free congestion signal.
 const LATENCY_BASELINE_WINDOW_MS = 10000;
 const latencySamples = [];
 let queueDelay = 0;
@@ -243,7 +239,7 @@ function connectWebSocket() {
       reconnectTimer = null;
     }
 
-    lastSentViewWidth = null;  // a new connection starts with no request on the server
+    lastSentViewWidth = null;
     sendView();
 
     ws.send(JSON.stringify({ type: 'request_frame' }));
@@ -385,8 +381,6 @@ canvas.addEventListener('mouseleave', (e) => {
   dragActive = false;
 });
 
-// mousedown/mouseup already deliver the full press -> release, so click only shows the
-// indicator. Sending a 'click' here as well would make the UI see a second tap.
 canvas.addEventListener('click', (e) => {
   if (dragActive) {
     dragActive = false;
@@ -452,9 +446,8 @@ const NAMED_KEYS = new Set([
 
 function isForwardableKey(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) {
-    return false;  // leave browser shortcuts (copy, paste, reload...) alone
+    return false;
   }
-  // Also rejects 'Unidentified', 'Process' and 'Dead' (IME/compose), which are neither.
   return !!e.key && (e.key.length === 1 || NAMED_KEYS.has(e.key));
 }
 
@@ -493,10 +486,6 @@ document.addEventListener('paste', (e) => {
   }
 });
 
-// Resolution. Every browser shares one encode, so the device uses the widest width any
-// connected client asks for, and sends half resolution when that is small enough. Auto asks
-// for the canvas's on-screen size, counting at most 1.5 device pixels per CSS pixel: past
-// that, phones' 3x screens add bytes but little legibility.
 const resToggle = document.getElementById('res-toggle');
 const RES_MODES = [
   { id: 'auto', label: 'Auto' },
@@ -511,7 +500,6 @@ let viewTimer = null;
 try {
   resMode = RES_MODES.find(m => m.id === localStorage.getItem('remoteUiRes')) || resMode;
 } catch (e) {
-  // storage unavailable (private mode); keep the default
 }
 
 function requestedViewWidth() {
@@ -544,7 +532,6 @@ resToggle.addEventListener('click', () => {
   try {
     localStorage.setItem('remoteUiRes', resMode.id);
   } catch (e) {
-    // not persisted; still applies to this session
   }
   sendView();
 });

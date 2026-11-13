@@ -24,15 +24,9 @@ ADAPT_RECOVER_S = 2.0
 ADAPT_HIGH_PRESSURE = 1.1
 ADAPT_LOW_PRESSURE = 0.6
 JPEG_SIZE_BUDGET_AT_10_FPS = 220_000
-# Encode scales offered to browsers below full size. Only 0.5: it's an exact 2x2 box
-# reduce, which with the smaller encode costs less than encoding full size. Any other
-# smooth resize (e.g. 0.75 bilinear or box) costs more CPU than the encode it saves.
 SCALE_STEPS = (0.5,)
-# The browser may upscale by up to this much rather than get the next larger step.
 MAX_BROWSER_UPSCALE = 1.33
-# Queueing delay browsers can see before the link counts as congested.
 NETWORK_DELAY_BUDGET_MS = 250.0
-# Re-announce an unchanged frame this often so browsers don't see the stream as stalled.
 UNCHANGED_KEEPALIVE_S = 1.0
 
 
@@ -47,18 +41,12 @@ class FrameStreamer:
     self.jpeg_quality = JPEG_QUALITY
     self.encode_pressure_ewma = 0.0
     self.last_adapt_time = 0.0
-    # Worker thread only.
     self._last_rgba = None
     self._last_encode_key = None
-    self._last_header = None  # header fields after the timestamp
+    self._last_header = None
     self._last_publish_mono = 0.0
-    # Adaptive rate/quality state is written by both the render thread (connect/disconnect) and the worker.
     self._state_lock = threading.Lock()
     self._init_shm()
-
-    # Encoding runs off the render thread (Pillow releases the GIL) so it doesn't add to UI frame time.
-    # One-slot handoff: the render thread only captures when the worker is idle, so frames are
-    # skipped rather than queued and the readback cost isn't paid for nothing.
     self._pending = None
     self._pending_cv = threading.Condition()
     self._encoding = False
@@ -166,13 +154,10 @@ class FrameStreamer:
         return
     self.last_capture_time = now_mono
 
-    # Otherwise the readback misses draws still sitting in raylib's batch.
     flush_batch = getattr(pr, "rl_draw_render_batch_active", None)
     if callable(flush_batch):
       flush_batch()
 
-    # GL readback has to happen here, on the thread that owns the context. The image's
-    # pixel buffer is then owned by the encoder, which copies it and frees it.
     rl_image = pr.load_image_from_screen()
     capture_ms = int(time.clock_gettime(time.CLOCK_REALTIME) * 1000)
     with self._pending_cv:
@@ -187,7 +172,7 @@ class FrameStreamer:
         if not self._running:
           return
         job = self._pending
-        assert job is not None  # the wait above only ends with a job or on stop
+        assert job is not None
         self._pending = None
         self._encoding = True
       try:
@@ -219,9 +204,7 @@ class FrameStreamer:
       # Keep a copy to compare against, since raylib's buffer is freed below.
       rgba = bytes(frame)
 
-      # JPEG has no alpha. load_image_from_screen is already top-to-bottom.
       pil_img = Image.frombytes("RGB", (width, height), rgba, "raw", "RGBX")
-      # Reducing after dropping alpha is faster than before it (3 channels instead of 4).
       if scale != 1.0:
         pil_img = pil_img.reduce(round(1 / scale))
 
@@ -238,22 +221,18 @@ class FrameStreamer:
       if shm_buf is None:
         return
 
-      # Write payload first, then the header with ready=1 last, so the
-      # reader never sees ready=1 pointing at stale/partial data.
       shm_buf[METADATA_SIZE : METADATA_SIZE + len(jpeg)] = jpeg
       self._last_header = (
         pil_img.width,
         pil_img.height,
         len(jpeg),
         FORMAT_JPEG,
-        1,  # ready
+        1,
         width,
         height,
       )
-      # epoch timestamp (ms) of the capture, not the encode
       shm_buf[0:METADATA_SIZE] = struct.pack(HEADER_FMT, capture_ms, *self._last_header)
       self._last_publish_mono = capture_mono
-      # Only remembered once published, so a dropped or failed frame is retried.
       self._last_rgba = rgba
       self._last_encode_key = encode_key
       with self._state_lock:
@@ -261,7 +240,6 @@ class FrameStreamer:
     except Exception as e:
       print(f"FrameStreamer error: {e}")
     finally:
-      # UnloadImage is a plain free(), so it's safe off the GL thread.
       pr.unload_image(rl_image)
 
   def _republish_last(self, capture_ms, capture_mono):
