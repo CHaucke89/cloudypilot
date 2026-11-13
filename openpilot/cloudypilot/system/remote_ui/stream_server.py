@@ -15,6 +15,7 @@ ensure_deps()
 
 from flask import Flask, render_template_string, request, jsonify, Response, send_from_directory
 from flask_sock import Sock
+from werkzeug.serving import make_server
 from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateWriter
 from openpilot.cloudypilot.system.remote_ui.protocol import FORMAT_JPEG, HEADER_FMT, METADATA_SIZE, SHM_NAME, SHM_SIZE, TOUCH_SOCKET_PATH
 
@@ -26,6 +27,9 @@ sock = Sock(app)
 FRAME_MSG_TYPE = 1
 FRAME_HEADER_FMT = '<BQIIHH'
 FRAME_HEADER_SIZE = struct.calcsize(FRAME_HEADER_FMT)
+
+HTTP_PORT = 8081
+BIND_RETRY_S = 5.0
 
 # Client feedback older than this no longer counts towards the published network delay
 FEEDBACK_STALE_S = 3.0
@@ -474,6 +478,29 @@ def wait_for_wifi(interface="wlan0", timeout=10, delay=2):
   print("Network not detected, continuing anyway...")
   return False
 
+
+def port_holder(port: int) -> str:
+  """Name and pid of whatever is listening on a TCP port, for the log."""
+  try:
+    out = subprocess.run(["ss", "-ltnpH", f"sport = :{port}"], capture_output=True, text=True, timeout=5).stdout
+    return out.split("users:", 1)[1].strip()
+  except (OSError, subprocess.SubprocessError, IndexError):
+    return "unknown"
+
+
+def serve(port: int = HTTP_PORT, retry_s: float = BIND_RETRY_S) -> None:
+  # Manager doesn't restart a process that exits, so wait for a busy port instead of dying
+  while True:
+    try:
+      server = make_server('0.0.0.0', port, app, threaded=True)
+      break
+    except SystemExit:  # werkzeug exits when the port is taken
+      print(f"remote_ui: port {port} is held by {port_holder(port)}, retrying in {retry_s:.0f}s")
+      time.sleep(retry_s)
+  print(f"remote_ui: serving on port {port}")
+  server.serve_forever()
+
+
 def main() -> None:
   global client_state
   client_state = ClientStateWriter()
@@ -491,7 +518,7 @@ def main() -> None:
   drive_state.start()
 
   try:
-    app.run(host='0.0.0.0', port=8081, debug=False)
+    serve()
   finally:
     client_state.close()
     shm_reader.close()
