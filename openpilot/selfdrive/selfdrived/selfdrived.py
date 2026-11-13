@@ -151,7 +151,8 @@ class SelfdriveD:
     self.state_machine = StateMachine()
     self.rk = Ratekeeper(100, print_delay_threshold=None)
 
-    self.ignored_processes = {'mapd', }
+    # remote_ui is a debugging aid and must never cause a disengagement
+    self.ignored_processes = {'mapd', 'remote_ui'}
 
     # Determine startup event
     is_remote = build_metadata.openpilot.comma_remote or build_metadata.openpilot.sunnypilot_remote or build_metadata.openpilot.cloudypilot_remote
