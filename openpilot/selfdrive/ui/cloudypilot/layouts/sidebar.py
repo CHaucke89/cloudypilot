@@ -1,6 +1,5 @@
 import pyray as rl
 import time
-from dataclasses import dataclass
 from collections.abc import Callable
 from openpilot.cereal import log
 from openpilot.selfdrive.ui.ui_state import ui_state
@@ -9,13 +8,18 @@ from openpilot.system.ui.lib.multilang import tr, tr_noop
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.widgets import Widget
 
-from openpilot.selfdrive.ui.sunnypilot.layouts.sidebar import SidebarSP
+from openpilot.selfdrive.ui.sunnypilot.layouts.sidebar import MetricData, SidebarSP
 
 SIDEBAR_WIDTH = 300
 METRIC_HEIGHT = 126
 METRIC_WIDTH = 240
 METRIC_MARGIN = 30
 FONT_SIZE = 35
+
+MAX_TILES = 4
+STORAGE_WARNING_PERCENT = 10  # deleter keeps this much free, so lower means it can't keep up
+STORAGE_DANGER_PERCENT = 7  # selfdrived raises outOfSpace below this
+BATTERY_WARNING_MARGIN_V = 0.3
 
 SETTINGS_BTN = rl.Rectangle(50, 35, 200, 117)
 HOME_BTN = rl.Rectangle(60, 860, 180, 180)
@@ -33,6 +37,8 @@ class Colors:
   GOOD = rl.WHITE
   WARNING = rl.Color(218, 202, 37, 255)
   DANGER = rl.Color(201, 34, 49, 255)
+  PROGRESS = rl.Color(0, 134, 233, 255)
+  DISABLED = rl.Color(128, 128, 128, 255)
 
   # UI elements
   METRIC_BORDER = rl.Color(255, 255, 255, 85)
@@ -51,18 +57,6 @@ NETWORK_TYPES = {
 }
 
 
-@dataclass(slots=True)
-class MetricData:
-  label: str
-  value: str
-  color: rl.Color
-
-  def update(self, label: str, value: str, color: rl.Color):
-    self.label = label
-    self.value = value
-    self.color = color
-
-
 class SidebarCP(Widget, SidebarSP):
   def __init__(self):
     Widget.__init__(self)
@@ -73,6 +67,10 @@ class SidebarCP(Widget, SidebarSP):
     self._temp_status = MetricData(tr_noop("TEMP"), tr_noop("GOOD"), Colors.GOOD)
     self._panda_status = MetricData(tr_noop("VEHICLE"), tr_noop("ONLINE"), Colors.GOOD)
     self._connect_status = MetricData(tr_noop("CONNECT"), tr_noop("OFFLINE"), Colors.WARNING)
+    self._storage_status = MetricData(tr_noop("STORAGE"), "--", Colors.DISABLED)
+    self._gps_status = MetricData(tr_noop("GPS"), tr_noop("OFF"), Colors.DISABLED)
+    self._battery_status = MetricData(tr_noop("BATTERY"), "--", Colors.DISABLED)
+    self._remote_ui_status = MetricData(tr_noop("REMOTE UI"), tr_noop("DISABLED"), Colors.DISABLED)
     self._recording_audio = False
 
     self._home_img = gui_app.texture("images/button_home.png", HOME_BTN.width, HOME_BTN.height)
@@ -115,6 +113,10 @@ class SidebarCP(Widget, SidebarSP):
     self._update_connection_status(device_state)
     self._update_panda_status()
     SidebarSP._update_sunnylink_status(self)
+    self._update_storage_status(device_state)
+    self._update_gps_status()
+    self._update_battery_status()
+    self._update_remote_ui_status()
 
   def _update_network_status(self, device_state):
     self._net_type = NETWORK_TYPES.get(device_state.networkType.raw, tr_noop("Unknown"))
@@ -122,12 +124,15 @@ class SidebarCP(Widget, SidebarSP):
     self._net_strength = max(0, min(5, strength.raw + 1)) if strength.raw > 0 else 0
 
   def _update_temperature_status(self, device_state):
-    thermal_status = device_state.thermalStatus
+    hot = device_state.thermalStatus != ThermalStatus.ok
 
-    if thermal_status == ThermalStatus.ok:
-      self._temp_status.update(tr_noop("TEMP"), tr_noop("GOOD"), Colors.GOOD)
+    if ui_state.sidebar_temp_degrees:
+      temp_c = device_state.maxTempC
+      value = f"{temp_c:.0f}°C" if ui_state.is_metric else f"{temp_c * 9 / 5 + 32:.0f}°F"
     else:
-      self._temp_status.update(tr_noop("TEMP"), tr_noop("HIGH"), Colors.DANGER)
+      value = tr_noop("HIGH") if hot else tr_noop("GOOD")
+
+    self._temp_status.update(tr_noop("TEMP"), value, Colors.DANGER if hot else Colors.GOOD)
 
   def _update_connection_status(self, device_state):
     last_ping = device_state.lastAthenaPingTime
@@ -143,6 +148,57 @@ class SidebarCP(Widget, SidebarSP):
       self._panda_status.update(tr_noop("NO"), tr_noop("PANDA"), Colors.DANGER)
     else:
       self._panda_status.update(tr_noop("VEHICLE"), tr_noop("ONLINE"), Colors.GOOD)
+
+  def _update_storage_status(self, device_state):
+    free = device_state.freeSpacePercent
+    if free < STORAGE_DANGER_PERCENT:
+      color = Colors.DANGER
+    elif free < STORAGE_WARNING_PERCENT:
+      color = Colors.WARNING
+    else:
+      color = Colors.GOOD
+
+    self._storage_status.update(tr_noop("STORAGE"), tr("{}% FREE").format(round(free)), color)
+
+  def _update_gps_status(self):
+    sm = ui_state.sm
+    # alive, not valid: the GPS daemons stop offroad and valid would keep the last fix
+    gps = next((sm[s] for s in ("gpsLocationExternal", "gpsLocation") if sm.alive[s]), None)
+
+    if gps is None:
+      self._gps_status.update(tr_noop("GPS"), tr_noop("OFF"), Colors.DISABLED)
+    elif not gps.hasFix:
+      self._gps_status.update(tr_noop("GPS"), tr_noop("NO FIX"), Colors.WARNING)
+    elif gps.satelliteCount > 0:
+      self._gps_status.update(tr_noop("GPS"), tr("{} SAT").format(gps.satelliteCount), Colors.GOOD)
+    else:
+      # qcomgpsd doesn't report a satellite count
+      self._gps_status.update(tr_noop("GPS"), tr_noop("FIX"), Colors.GOOD)
+
+  def _update_battery_status(self):
+    panda_states = ui_state.sm["pandaStates"]
+    if ui_state.panda_type == log.PandaState.PandaType.unknown or len(panda_states) == 0:
+      self._battery_status.update(tr_noop("BATTERY"), "--", Colors.DISABLED)
+      return
+
+    voltage = panda_states[0].voltage / 1000
+    if voltage <= ui_state.shutdown_voltage:
+      color = Colors.DANGER
+    elif voltage <= ui_state.shutdown_voltage + BATTERY_WARNING_MARGIN_V:
+      color = Colors.WARNING
+    else:
+      color = Colors.GOOD
+
+    self._battery_status.update(tr_noop("BATTERY"), f"{voltage:.1f} V", color)
+
+  def _update_remote_ui_status(self):
+    if not ui_state.remote_ui:
+      self._remote_ui_status.update(tr_noop("REMOTE UI"), tr_noop("DISABLED"), Colors.DISABLED)
+      return
+
+    clients = ui_state.remote_ui_client_count
+    value = tr("1 CLIENT") if clients == 1 else tr("{} CLIENTS").format(clients)
+    self._remote_ui_status.update(tr_noop("REMOTE UI"), value, Colors.PROGRESS if clients > 0 else Colors.GOOD)
 
   def _handle_mouse_release(self, mouse_pos: MousePos):
     if rl.check_collision_point_rec(mouse_pos, SETTINGS_BTN):
@@ -212,10 +268,20 @@ class SidebarCP(Widget, SidebarSP):
 
   def _draw_metrics(self, rect: rl.Rectangle):
     if gui_app.cloudypilot_ui():
-      metrics, start_y, spacing = SidebarSP._draw_metrics_w_sunnylink(self, rect, self._temp_status, self._panda_status, self._connect_status)
-      shown = (ui_state.sidebar_show_temp, ui_state.sidebar_show_vehicle, ui_state.sidebar_show_connect, ui_state.sidebar_show_sunnylink)
-      # Spacing stays sized for all four so hidden metrics don't spread the rest apart
-      metrics = [metric for metric, show in zip(metrics, shown, strict=True) if show]
+      # Spacing stays sized for four so hidden metrics don't spread the rest apart
+      _, start_y, spacing = SidebarSP._draw_metrics_w_sunnylink(self, rect, self._temp_status, self._panda_status, self._connect_status)
+      tiles = (
+        (ui_state.sidebar_show_temp, self._temp_status),
+        (ui_state.sidebar_show_vehicle, self._panda_status),
+        (ui_state.sidebar_show_connect, self._connect_status),
+        (ui_state.sidebar_show_sunnylink, self._sunnylink_status),
+        (ui_state.sidebar_show_storage, self._storage_status),
+        (ui_state.sidebar_show_gps, self._gps_status),
+        (ui_state.sidebar_show_battery, self._battery_status),
+        (ui_state.sidebar_show_remote_ui, self._remote_ui_status),
+      )
+      # The panel enforces the cap, but params can also be set from outside it
+      metrics = [metric for show, metric in tiles if show][:MAX_TILES]
       for idx, metric in enumerate(metrics):
         self._draw_metric(rect, metric, start_y + idx * spacing)
 

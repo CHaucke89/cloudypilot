@@ -75,7 +75,13 @@ class ClientStateReader:
     if self._map is None and not self._open():
       return False
     assert self._map is not None
-    return struct.unpack_from("<I", self._map, 0)[0] > 0
+    return struct.unpack_from(FIELD_FMT, self._map, field * FIELD_SIZE)[0]
+
+  def client_count(self) -> int:
+    return self._get(CLIENT_COUNT)
+
+  def connected(self) -> bool:
+    return self.client_count() > 0
 
   def network_delay_ms(self) -> int:
     """Worst queueing delay reported by connected browsers, 0 if unknown."""
