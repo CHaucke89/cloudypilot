@@ -49,12 +49,12 @@ class PersonalizeLayout(Widget):
     item.action_item.set_enabled(lambda: self._can_toggle(item))
     return item
 
-  def _tiles_on(self) -> int:
+  def _total_tiles_on(self) -> int:
     return sum(item.action_item.get_state() for item in self._tile_items)
 
   def _can_toggle(self, item) -> bool:
     # Tiles that are on stay enabled so they can always be turned off
-    return item.action_item.get_state() or self._tiles_on() < MAX_TILES
+    return item.action_item.get_state() or self._total_tiles_on() < MAX_TILES
 
   def _tile_description(self, item, desc) -> str:
     if self._can_toggle(item):
