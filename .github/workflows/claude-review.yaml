@@ -1,0 +1,54 @@
+name: claude review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: review
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft &&
+      !startsWith(github.head_ref, 'sync-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Review pull request
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          include_fix_links: false
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. Read CLAUDE.md first for the repo layout and conventions.
+
+            Look for, in priority order:
+            - Bugs and logic errors, especially in driving, safety, and car control code
+            - Security problems
+            - Regressions in existing behavior
+            - Deviations from the conventions in CLAUDE.md
+
+            Rules:
+            - Report only issues you are confident are real. No style nitpicks, no praise, no restating what the code does.
+            - Post each issue as an inline comment on the relevant line (with `confirmed: true`), in one or two sentences, with a fix when it is obvious.
+            - Finish with one short top-level comment via `gh pr comment`: a one-line verdict, plus anything that did not fit inline. If there are no issues, say so in one line.
+            - Review only the changes in this PR, and do not repeat an issue that an earlier comment on this PR already covers.
+            - Do not add signatures or attribution lines to comments.
+          claude_args: |
+            --permission-mode default
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
