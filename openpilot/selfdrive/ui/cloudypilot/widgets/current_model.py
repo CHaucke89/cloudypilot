@@ -23,15 +23,11 @@ class ModelWidget(Widget):
     self._open_models_callback = callback
 
   def _render(self, rect: rl.Rectangle):
-    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, 400), 0.04, 20, rl.Color(51, 51, 51, 255))
+    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, rect.height), 0.04, 20, rl.Color(51, 51, 51, 255))
 
     x = rect.x + 56
-    y = rect.y + 40
     w = rect.width - 112
     spacing = 42
-
-    self._title_label.render(rl.Rectangle(rect.x, y, rect.width, 64))
-    y += 64 + spacing
 
     model_manager = ui_state.sm["modelManagerSP"] if "modelManagerSP" in ui_state.sm.services else None
     if model_manager and model_manager.activeBundle.ref:
@@ -42,6 +38,13 @@ class ModelWidget(Widget):
     desc_font = gui_app.font(FontWeight.NORMAL)
     wrapped_desc = wrap_text(desc_font, active_name, 40, int(w))
 
+    button_height = 48 + 64
+    content_height = 64 + spacing + len(wrapped_desc) * 40 * FONT_SCALE + spacing + button_height
+    y = rect.y + (rect.height - content_height) / 2
+
+    self._title_label.render(rl.Rectangle(rect.x, y, rect.width, 64))
+    y += 64 + spacing
+
     for line in wrapped_desc:
       text_size = measure_text_cached(desc_font, line, 40)
       line_x = rect.x + (rect.width - text_size.x) // 2
@@ -50,6 +53,5 @@ class ModelWidget(Widget):
 
     y += spacing
 
-    button_height = 48 + 64
     button_rect = rl.Rectangle(x, y, w, button_height)
     self._open_models_btn.render(button_rect)
