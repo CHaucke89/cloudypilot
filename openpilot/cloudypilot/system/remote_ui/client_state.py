@@ -1,5 +1,3 @@
-"""Shared memory instead of params, since param writes (tmp file + fsync + rename) are too slow to stream."""
-
 import mmap
 import os
 import struct
@@ -62,7 +60,6 @@ class ClientStateReader:
       os.close(fd)
 
   def _get(self, field: int) -> int:
-    # Retry until stream_server creates the segment; one failed open() per call is negligible.
     if self._map is None and not self._open():
       return 0
     assert self._map is not None

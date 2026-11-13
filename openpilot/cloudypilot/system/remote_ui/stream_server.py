@@ -22,8 +22,6 @@ from openpilot.cloudypilot.system.remote_ui.protocol import FORMAT_JPEG, HEADER_
 app = Flask(__name__)
 sock = Sock(app)
 
-# Binary frame message: type(1) + timestamp ms(8) + width(4) + height(4) + source width(2) + source height(2),
-# then JPEG bytes. Source size is the UI's real resolution, which input coordinates are in.
 FRAME_MSG_TYPE = 1
 FRAME_HEADER_FMT = '<BQIIHH'
 FRAME_HEADER_SIZE = struct.calcsize(FRAME_HEADER_FMT)
@@ -31,13 +29,12 @@ FRAME_HEADER_SIZE = struct.calcsize(FRAME_HEADER_FMT)
 HTTP_PORT = 8081
 BIND_RETRY_S = 5.0
 
-# Client feedback older than this no longer counts towards the published network delay
 FEEDBACK_STALE_S = 3.0
 
 websocket_clients = set()
 clients_lock = threading.Lock()
 client_state: ClientStateWriter | None = None
-client_feedback: dict[int, tuple[float, float]] = {}  # client id -> (monotonic time, queue delay ms)
+client_feedback: dict[int, tuple[float, float]] = {}
 client_view_widths: dict[int, int] = {}
 
 
@@ -105,7 +102,6 @@ class DriveState:
     try:
       import cereal.messaging as messaging
     except ImportError as e:
-      # The UI process applies the same gate, so this only costs the browser banner.
       print(f"DriveState: cereal unavailable, not gating input here: {e}")
       return
 
@@ -133,7 +129,6 @@ class FrameCache:
   def add_frame(self, timestamp: int, data: bytes, width: int, height: int, source_width: int, source_height: int):
     with self.lock:
       if timestamp > self.latest_timestamp:
-        # Pack the WebSocket message once here instead of once per client; 'data' is a view into it.
         packet = struct.pack(FRAME_HEADER_FMT, FRAME_MSG_TYPE, timestamp, width, height,
                              source_width or width, source_height or height) + data
         frame_info = {'timestamp': timestamp, 'data': memoryview(packet)[FRAME_HEADER_SIZE:], 'packet': packet,
@@ -199,7 +194,6 @@ class SharedMemoryReader:
       return None
 
     try:
-      # Source (pre-scaling) size is zero from writers that predate scaling.
       timestamp, width, height, size, format_type, ready, source_width, source_height = struct.unpack_from(HEADER_FMT, self.shm_map, 0)
 
       if ready == 0 or size == 0 or timestamp <= self.last_timestamp:
@@ -494,7 +488,7 @@ def serve(port: int = HTTP_PORT, retry_s: float = BIND_RETRY_S) -> None:
     try:
       server = make_server('0.0.0.0', port, app, threaded=True)
       break
-    except SystemExit:  # werkzeug exits when the port is taken
+    except SystemExit:
       print(f"remote_ui: port {port} is held by {port_holder(port)}, retrying in {retry_s:.0f}s")
       time.sleep(retry_s)
   print(f"remote_ui: serving on port {port}")
@@ -506,13 +500,11 @@ def main() -> None:
   client_state = ClientStateWriter()
   wait_for_wifi()
 
-  print("=" * 60)
-  print("cloudypilot Remote UI Streaming Server")
-  print("=" * 60)
-  print("✅ Zero disk storage - Memory only")
-  print("✅ WebSocket real-time streaming")
-  print("✅ Automatic frame broadcasting")
-  print("=" * 60)
+  print("_-=-_" * 12)
+  print("_-=-_" * 12)
+  print("cloudypilot Remote UI Streamer")
+  print("_-=-_" * 12)
+  print("_-=-_" * 12)
 
   shm_reader.start_monitoring()
   drive_state.start()
