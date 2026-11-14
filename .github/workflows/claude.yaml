@@ -44,4 +44,4 @@ jobs:
           claude_args: |
             --allowedTools "Bash(gh pr create:*)"
             --model claude-sonnet-5-5
-            --effort high
+            --effort medium
