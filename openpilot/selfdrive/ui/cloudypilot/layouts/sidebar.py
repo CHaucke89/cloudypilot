@@ -83,6 +83,7 @@ class SidebarCP(Widget, SidebarSP):
     self._remote_ui_status = MetricData(tr_noop("REMOTE UI"), tr_noop("DISABLED"), Colors.DISABLED)
     self._update_status = MetricData(tr_noop("UPDATE"), "--", Colors.DISABLED)
     self._load_status = MetricData(tr_noop("CPU"), tr_noop("MEM"), Colors.DISABLED)
+    self._updater_busy = False
     self._recording_audio = False
 
     self._home_img = gui_app.texture("images/button_home.png", HOME_BTN.width, HOME_BTN.height)
@@ -219,8 +220,17 @@ class SidebarCP(Widget, SidebarSP):
     if not ui_state.sidebar_show_update:
       return
 
+    if ui_state.started:
+      # updated stops for the drive without resetting UpdaterState, and UpdateAvailable is cleared onroad,
+      # so hold the last offroad status instead of reading stale params
+      if self._updater_busy:
+        self._updater_busy = False
+        self._update_status.update(tr_noop("UPDATE"), tr_noop("PAUSED"), Colors.DISABLED)
+      return
+
     params = ui_state.params
     updater_state = params.get("UpdaterState")
+    self._updater_busy = False
 
     if params.get_bool("DisableUpdates"):
       status, color = tr_noop("DISABLED"), Colors.DISABLED
@@ -228,6 +238,7 @@ class SidebarCP(Widget, SidebarSP):
       # updated only runs offroad and hasn't reported since boot
       status, color = "--", Colors.DISABLED
     elif updater_state != "idle":
+      self._updater_busy = True
       status, color = UPDATER_STATES.get(updater_state, tr_noop("BUSY")), Colors.PROGRESS
     elif params.get_bool("UpdateAvailable"):
       status, color = tr_noop("READY"), Colors.WARNING
