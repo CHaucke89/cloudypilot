@@ -27,6 +27,7 @@ jobs:
           fetch-depth: 1
 
       - name: Review pull request
+        id: review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -49,6 +50,13 @@ jobs:
             - Finish with one short top-level comment via `gh pr comment`: a one-line verdict, plus anything that did not fit inline. If there are no issues, say so in one line.
             - Review only the changes in this PR, and do not repeat an issue that an earlier comment on this PR already covers.
             - Do not add signatures or attribution lines to comments.
+
+            Verdict: set `blocking` to true only if you found a bug, security problem, or regression that should be fixed before merging. Convention deviations alone are not blocking. A top-level comment from the PR author that answers an earlier finding settles it.
           claude_args: |
             --permission-mode default
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --json-schema '{"type":"object","properties":{"blocking":{"type":"boolean"}},"required":["blocking"]}'
+
+      - name: Fail on blocking findings
+        if: fromJSON(steps.review.outputs.structured_output || '{}').blocking
+        run: echo "::error::The review found blocking issues, see the PR comments" && exit 1
