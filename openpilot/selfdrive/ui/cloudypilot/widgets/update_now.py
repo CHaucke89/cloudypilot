@@ -23,7 +23,6 @@ RED_DISABLED = rl.Color(120, 20, 20, 255)
 BUTTON_TEXT = rl.Color(20, 20, 20, 255)
 
 UPDATE_REMOTE = "origin"
-# get_branch() returns the upstream ref as "remote/branch"
 UPDATE_BRANCH = get_branch().split("/", 1)[-1]
 
 HARD_UPDATE_COMMANDS = (
