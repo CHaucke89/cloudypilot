@@ -20,6 +20,9 @@ MAX_TILES = 4
 STORAGE_WARNING_PERCENT = 10  # deleter keeps this much free, so lower means it can't keep up
 STORAGE_DANGER_PERCENT = 7  # selfdrived raises outOfSpace below this
 BATTERY_WARNING_MARGIN_V = 0.3
+LOAD_WARNING_PERCENT = 80
+CPU_DANGER_PERCENT = 95
+MEMORY_DANGER_PERCENT = 90  # selfdrived raises lowMemory above this
 
 SETTINGS_BTN = rl.Rectangle(50, 35, 200, 117)
 HOME_BTN = rl.Rectangle(60, 860, 180, 180)
@@ -57,6 +60,13 @@ NETWORK_TYPES = {
 }
 
 
+UPDATER_STATES = {
+  "checking...": tr_noop("CHECKING"),
+  "downloading...": tr_noop("FETCHING"),
+  "finalizing update...": tr_noop("FINISHING"),
+}
+
+
 class SidebarCP(Widget, SidebarSP):
   def __init__(self):
     Widget.__init__(self)
@@ -71,6 +81,9 @@ class SidebarCP(Widget, SidebarSP):
     self._gps_status = MetricData(tr_noop("GPS"), tr_noop("OFF"), Colors.DISABLED)
     self._battery_status = MetricData(tr_noop("BATTERY"), "--", Colors.DISABLED)
     self._remote_ui_status = MetricData(tr_noop("REMOTE UI"), tr_noop("DISABLED"), Colors.DISABLED)
+    self._update_status = MetricData(tr_noop("UPDATE"), "--", Colors.DISABLED)
+    self._load_status = MetricData(tr_noop("CPU"), tr_noop("MEM"), Colors.DISABLED)
+    self._updater_busy = False
     self._recording_audio = False
 
     self._home_img = gui_app.texture("images/button_home.png", HOME_BTN.width, HOME_BTN.height)
@@ -117,6 +130,8 @@ class SidebarCP(Widget, SidebarSP):
     self._update_gps_status()
     self._update_battery_status()
     self._update_remote_ui_status()
+    self._update_updater_status()
+    self._update_load_status(device_state)
 
   def _update_network_status(self, device_state):
     self._net_type = NETWORK_TYPES.get(device_state.networkType.raw, tr_noop("Unknown"))
@@ -200,6 +215,56 @@ class SidebarCP(Widget, SidebarSP):
     value = tr("1 CLIENT") if clients == 1 else tr("{} CLIENTS").format(clients)
     self._remote_ui_status.update(tr_noop("REMOTE UI"), value, Colors.PROGRESS if clients > 0 else Colors.GOOD)
 
+  def _update_updater_status(self):
+    # Costs up to five param reads, so skip them while the tile is hidden
+    if not ui_state.sidebar_show_update:
+      return
+
+    if ui_state.started:
+      # updated stops for the drive without resetting UpdaterState, and UpdateAvailable is cleared onroad,
+      # so hold the last offroad status instead of reading stale params
+      if self._updater_busy:
+        self._updater_busy = False
+        self._update_status.update(tr_noop("UPDATE"), tr_noop("PAUSED"), Colors.DISABLED)
+      return
+
+    params = ui_state.params
+    updater_state = params.get("UpdaterState")
+    self._updater_busy = False
+
+    if params.get_bool("DisableUpdates"):
+      status, color = tr_noop("DISABLED"), Colors.DISABLED
+    elif updater_state is None:
+      # updated only runs offroad and hasn't reported since boot
+      status, color = "--", Colors.DISABLED
+    elif updater_state != "idle":
+      self._updater_busy = True
+      status, color = UPDATER_STATES.get(updater_state, tr_noop("BUSY")), Colors.PROGRESS
+    elif params.get_bool("UpdateAvailable"):
+      status, color = tr_noop("READY"), Colors.WARNING
+    elif (params.get("UpdateFailedCount") or 0) > 0:
+      status, color = tr_noop("FAILED"), Colors.DANGER
+    elif params.get_bool("UpdaterFetchAvailable"):
+      status, color = tr_noop("AVAILABLE"), Colors.WARNING
+    else:
+      status, color = tr_noop("UP TO DATE"), Colors.GOOD
+
+    self._update_status.update(tr_noop("UPDATE"), status, color)
+
+  def _update_load_status(self, device_state):
+    cores = device_state.cpuUsagePercent
+    cpu = round(sum(cores) / len(cores)) if len(cores) > 0 else 0
+    memory = device_state.memoryUsagePercent
+
+    if cpu >= CPU_DANGER_PERCENT or memory > MEMORY_DANGER_PERCENT:
+      color = Colors.DANGER
+    elif cpu >= LOAD_WARNING_PERCENT or memory >= LOAD_WARNING_PERCENT:
+      color = Colors.WARNING
+    else:
+      color = Colors.GOOD
+
+    self._load_status.update(tr("CPU {}%").format(cpu), tr("MEM {}%").format(memory), color)
+
   def _handle_mouse_release(self, mouse_pos: MousePos):
     if rl.check_collision_point_rec(mouse_pos, SETTINGS_BTN):
       if self._on_settings_click:
@@ -279,6 +344,8 @@ class SidebarCP(Widget, SidebarSP):
         (ui_state.sidebar_show_gps, self._gps_status),
         (ui_state.sidebar_show_battery, self._battery_status),
         (ui_state.sidebar_show_remote_ui, self._remote_ui_status),
+        (ui_state.sidebar_show_update, self._update_status),
+        (ui_state.sidebar_show_load, self._load_status),
       )
       # The panel enforces the cap, but params can also be set from outside it
       metrics = [metric for show, metric in tiles if show][:MAX_TILES]
