@@ -23,7 +23,7 @@ RED_DISABLED = rl.Color(120, 20, 20, 255)
 BUTTON_TEXT = rl.Color(20, 20, 20, 255)
 
 UPDATE_REMOTE = "origin"
-UPDATE_BRANCH = get_branch()
+UPDATE_BRANCH = get_branch().split("/", 1)[-1]
 
 HARD_UPDATE_COMMANDS = (
   ["git", "fetch", UPDATE_REMOTE],
