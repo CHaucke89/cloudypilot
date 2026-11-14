@@ -29,6 +29,8 @@ class PersonalizeLayout(Widget):
       ("SidebarShowGps", lambda: tr("Sidebar: GPS"), lambda: tr("Show the GPS fix and satellite count in the sidebar.")),
       ("SidebarShowBattery", lambda: tr("Sidebar: Car Battery"), lambda: tr("Show the car battery voltage in the sidebar.")),
       ("SidebarShowRemoteUI", lambda: tr("Sidebar: Remote UI"), lambda: tr("Show the number of connected Remote UI clients in the sidebar.")),
+      ("SidebarShowUpdate", lambda: tr("Sidebar: Update"), lambda: tr("Show the software update status in the sidebar.")),
+      ("SidebarShowLoad", lambda: tr("Sidebar: System Load"), lambda: tr("Show the CPU and memory usage in the sidebar.")),
     ]
     self._tile_items = [self._tile_item(param, title, desc) for param, title, desc in tile_toggles]
 

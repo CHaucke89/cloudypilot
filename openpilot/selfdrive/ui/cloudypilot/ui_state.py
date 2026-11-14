@@ -15,6 +15,8 @@ class UIStateCP:
     self.sidebar_show_gps: bool = False
     self.sidebar_show_battery: bool = False
     self.sidebar_show_remote_ui: bool = False
+    self.sidebar_show_update: bool = False
+    self.sidebar_show_load: bool = False
     self.sidebar_temp_degrees: bool = False
     self.shutdown_voltage: float = 11.8
     self._remote_ui_client_state = ClientStateReader()
@@ -40,5 +42,7 @@ class UIStateCP:
     self.sidebar_show_gps = self.params.get_bool("SidebarShowGps")
     self.sidebar_show_battery = self.params.get_bool("SidebarShowBattery")
     self.sidebar_show_remote_ui = self.params.get_bool("SidebarShowRemoteUI")
+    self.sidebar_show_update = self.params.get_bool("SidebarShowUpdate")
+    self.sidebar_show_load = self.params.get_bool("SidebarShowLoad")
     self.sidebar_temp_degrees = self.params.get_bool("SidebarTempDegrees")
     self.shutdown_voltage = self.params.get("CustomShutdownVoltage", return_default=True)
