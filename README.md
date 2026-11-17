@@ -43,7 +43,7 @@ The **Personalize** panel in Settings controls which status tiles appear in the 
 
 - **Temperature**, shown as GOOD/HIGH or, optionally, in degrees
 - **Vehicle** (panda connection)
-- **Connect** (comma connect status)
+- **Connect** (comma connect/konik stable status)
 - **sunnylink**
 - **Storage** (free space)
 - **GPS** (fix and satellite count)
