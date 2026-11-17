@@ -9,9 +9,27 @@ on:
     types: [submitted]
   issues:
     types: [opened, assigned]
+  workflow_dispatch:
+    inputs:
+      head:
+        description: Branch to open the PR from
+        required: true
+      base:
+        description: Branch to merge into
+        default: master
+      title:
+        description: PR title
+        required: true
+      body:
+        description: PR description
+        default: ""
+      draft:
+        description: Open as a draft
+        type: boolean
+        default: true
 
 concurrency:
-  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -45,3 +63,39 @@ jobs:
             --allowedTools "Bash(gh pr create:*)"
             --model claude-sonnet-5-5
             --effort medium
+
+  open-pr:
+    name: open pr
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      # Inputs go through env, not the prompt, so their text can't steer Claude
+      - name: Open pull request
+        uses: anthropics/claude-code-action@v1
+        env:
+          PR_HEAD: ${{ inputs.head }}
+          PR_BASE: ${{ inputs.base }}
+          PR_TITLE: ${{ inputs.title }}
+          PR_BODY: ${{ inputs.body }}
+          PR_DRAFT: ${{ inputs.draft && '--draft' || '' }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Run exactly this one command, unchanged, then stop:
+
+            gh pr create --head "$PR_HEAD" --base "$PR_BASE" --title "$PR_TITLE" --body "$PR_BODY" $PR_DRAFT
+
+            Do not read the variables, edit files or run anything else.
+          claude_args: |
+            --allowedTools "Bash(gh pr create:*)"
+            --model claude-haiku-5-5
+            --effort low
