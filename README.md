@@ -32,8 +32,27 @@ cloudypilot's master branch can be installed using the following URL: `installer
 - Add a **Soft Reboot** button to the Device panel and support `sudo systemctl restart comma` without triggering the hardware-reset prompt. Standard hardware reboot behavior is preserved.
 - Reset configurable options to their defaults by tapping the current value.
 - Show the active model, current branch, and Always Offroad Mode controls on the home screen.
-- Stream and interact with the device remotely the built-in Remote UI streamer (more info below).
+- Update to the latest commit on the current branch straight from the home screen with the **Instant Update** card. **Soft Update** pulls the latest changes and soft reboots; **Hard Update** fetches and hard-resets to the remote branch before rebooting.
+- Customize the sidebar from the new **Personalize** settings panel (more info below).
+- Stream and interact with the device remotely with the built-in Remote UI streamer (more info below).
 - Include additional user-interface changes.
+
+## Personalize the sidebar
+
+The **Personalize** panel in Settings controls which status tiles appear in the sidebar. The network indicator can be shown or hidden, and up to four of the following tiles can be enabled at once:
+
+- **Temperature**, shown as GOOD/HIGH or, optionally, in degrees
+- **Vehicle** (panda connection)
+- **Connect** (comma connect/konik stable status)
+- **sunnylink**
+- **Storage** (free space)
+- **GPS** (fix and satellite count)
+- **Car Battery** (voltage)
+- **Remote UI** (number of connected clients)
+- **Update** (software update status, held at its last offroad value while driving)
+- **System Load** (CPU and memory usage)
+
+Once four tiles are on, the rest are disabled until one is turned off.
 
 ## Remote UI Stream
 
@@ -41,6 +60,8 @@ cloudypilot incorporates the [raylib implementation of the openpilot remote UI s
 and runs alongside the other openpilot/sunnypilot/cloudypilot processes. Verify it's running by connecting to the device through SSH and attaching to the comma tmux session with `tmux a`.
 
 Make sure you're connected to the same Wifi network as the device and head to `http://<device-ip>:8081` in your browser to view and interact with the comma device remotely. Its output appears in the comma tmux session along with the other processes.
+
+You can see how many remote clients are connected by enabling the Remote UI toggle in the Personalize panel to add an icon to the sidebar with total connected clients.
 
 ## Use Remote UI as a Web App (PWA)
 
@@ -91,9 +112,14 @@ Notes:
 
 ## Branch guidance
 
-Do **not** install the `ch-dev` branch; it will only run on one specific device. The `master` branch is the only branch that should be installed on a device or used for development. Alternatively, to speed up boot time considerably, the `master-prebuilt` branch is automatically built on every push to the master branch, so it is always up-to-date. The prebuilt branch should only be used for device installation as much of the source code is no longer present. This project is primarily maintained for personal use, but feel free to use anything you find here however you see fit!
+Do **not** install the `ch-dev` branch; it will only run on one specific device. The `master` branch is the only branch that should be installed on a device or used for development. Alternatively, to speed up boot time considerably, the `master-prebuilt` branch is automatically built on every push to the master branch, so it is always up-to-date. The prebuilt branch should only be used for device installation as much of the source code is no longer present. `master` is regularly synced with upstream sunnypilot, so new sunnypilot features land here as well. This project is primarily maintained for personal use, but feel free to use anything you find here however you see fit!
 
 If you find a feature that would be useful upstream in sunnypilot, open an issue or reach out! A pull request can be made, if feasible.
+
+## Development
+
+- Git LFS files are hosted on a self-hosted Gitea mirror instead of GitHub. `tools/op.sh setup` pulls them with `tools/lfs_pull.sh`, which falls back to GitHub for anything the mirror doesn't have. Run that script instead of `git lfs pull` when pulling LFS files manually.
+- Non-draft pull requests are reviewed automatically by Claude, and mentioning `@claude` in an issue or PR comment (write access required) asks it to respond or make changes.
 
 ## Related documentation
 
