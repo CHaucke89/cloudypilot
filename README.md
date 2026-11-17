@@ -61,7 +61,7 @@ and runs alongside the other openpilot/sunnypilot/cloudypilot processes. Verify 
 
 Make sure you're connected to the same Wifi network as the device and head to `http://<device-ip>:8081` in your browser to view and interact with the comma device remotely. Its output appears in the comma tmux session along with the other processes.
 
-Frames that haven't changed since the last one are not re-encoded, which keeps CPU usage low while the screen is idle. Enable the **Remote UI** sidebar tile to see how many clients are connected.
+You can see how many remote clients are connected by enabling the Remote UI toggle in the Personalize panel to add an icon to the sidebar with total connected clients.
 
 ## Use Remote UI as a Web App (PWA)
 
