@@ -1,5 +1,6 @@
 import subprocess
 import threading
+from enum import Enum
 
 import pyray as rl
 from openpilot.common.basedir import BASEDIR
@@ -20,6 +21,9 @@ YELLOW_DISABLED = rl.Color(120, 100, 20, 255)
 RED = rl.Color(255, 70, 70, 255)
 RED_PRESSED = rl.Color(226, 44, 44, 255)
 RED_DISABLED = rl.Color(120, 20, 20, 255)
+GREEN = rl.Color(51, 171, 76, 255)
+GREEN_PRESSED = rl.Color(40, 140, 62, 255)
+GREEN_DISABLED = rl.Color(25, 85, 38, 255)
 BUTTON_TEXT = rl.Color(20, 20, 20, 255)
 
 UPDATE_REMOTE = "origin"
@@ -37,7 +41,14 @@ SOFT_UPDATE_COMMANDS = (
 )
 
 BUTTON_SPACING = 24
+BUTTON_HEIGHT = 96
 BUTTON_FONT_SIZE = 44  # right column is narrow; default 60 won't fit two labels side by side
+
+
+class UpdateCheck(Enum):
+  NONE = 0
+  FAST_FORWARD = 1
+  DIVERGED = 2
 
 
 class YellowButton(Button):
@@ -58,12 +69,25 @@ class RedButton(Button):
       self._background_color = RED_PRESSED if self.is_pressed else RED
     self._label.set_text_color(BUTTON_TEXT)
 
+class GreenButton(Button):
+  def _update_state(self):
+    super()._update_state()
+    if not self.enabled:
+      self._background_color = GREEN_DISABLED
+    else:
+      self._background_color = GREEN_PRESSED if self.is_pressed else GREEN
+    self._label.set_text_color(BUTTON_TEXT)
+
 class UpdateNowWidget(Widget):
-  """Card with Hard/Soft update buttons. Hard: fetch + hard reset + reboot. Soft: pull + soft reboot. Both update submodules."""
+  """Card with Check/Soft/Hard update buttons; Check gates Soft (fast-forward) vs Hard (force-pushed)."""
 
   def __init__(self):
     super().__init__()
     self._updating = False
+    self._checking = False
+    self._check_result: UpdateCheck | None = None
+    self._check_button = GreenButton(lambda: tr("Checking...") if self._checking else tr("Check"),
+                                     self._start_check, font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
     self._hard_button = RedButton(lambda: tr("Updating...") if self._updating else tr("Hard Update"),
                                      lambda: self._start_update(HARD_UPDATE_COMMANDS), font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
     self._soft_button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Soft Update"),
@@ -75,6 +99,44 @@ class UpdateNowWidget(Widget):
       return
     self._updating = True
     threading.Thread(target=self._run_update, args=(commands,), daemon=True).start()
+
+  def _start_check(self):
+    if self._checking or self._updating:
+      return
+    self._checking = True
+    threading.Thread(target=self._run_check, daemon=True).start()
+
+  def _run_check(self):
+    try:
+      subprocess.run(["git", "fetch", UPDATE_REMOTE], cwd=BASEDIR, check=True, capture_output=True, text=True)
+      head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=BASEDIR, text=True).strip()
+      remote = subprocess.check_output(["git", "rev-parse", f"{UPDATE_REMOTE}/{UPDATE_BRANCH}"], cwd=BASEDIR, text=True).strip()
+      if head == remote:
+        self._check_result = UpdateCheck.NONE
+      elif subprocess.run(["git", "merge-base", "--is-ancestor", head, remote], cwd=BASEDIR).returncode == 0:
+        self._check_result = UpdateCheck.FAST_FORWARD
+      else:
+        # also covers remote rewound behind HEAD, which only a hard reset can follow
+        self._check_result = UpdateCheck.DIVERGED
+    except subprocess.CalledProcessError as e:
+      cloudlog.error(f"update check failed: {' '.join(e.cmd)}: {e.stderr}")
+      self._check_result = None
+    except Exception:
+      cloudlog.exception("update check failed")
+      self._check_result = None
+    finally:
+      self._checking = False
+
+  def _status_text(self) -> str:
+    if self._checking:
+      return tr("Checking for updates...")
+    if self._check_result == UpdateCheck.NONE:
+      return tr("Up to date")
+    if self._check_result == UpdateCheck.FAST_FORWARD:
+      return tr("Update available")
+    if self._check_result == UpdateCheck.DIVERGED:
+      return tr("Branch was force-pushed")
+    return tr(f"Update to latest {UPDATE_BRANCH}")
 
   def _run_update(self, commands):
     cmd: list[str] = []
@@ -94,13 +156,12 @@ class UpdateNowWidget(Widget):
 
     x = rect.x + 56
     w = rect.width - 112
-    spacing = 42
+    spacing = 32
 
     desc_font = gui_app.font(FontWeight.NORMAL)
-    wrapped_desc = wrap_text(desc_font, tr(f"Update to latest {UPDATE_BRANCH}"), 40, int(w))
+    wrapped_desc = wrap_text(desc_font, self._status_text(), 40, int(w))
 
-    button_height = 48 + 64
-    content_height = 64 + spacing + len(wrapped_desc) * 40 * FONT_SCALE + spacing + button_height
+    content_height = 64 + spacing + len(wrapped_desc) * 40 * FONT_SCALE + spacing + BUTTON_HEIGHT * 2 + BUTTON_SPACING
     y = rect.y + (rect.height - content_height) / 2
 
     self._title_label.render(rl.Rectangle(rect.x, y, rect.width, 64))
@@ -113,7 +174,15 @@ class UpdateNowWidget(Widget):
 
     y += spacing
 
+    busy = self._updating or self._checking
+    self._check_button.set_enabled(not busy)
+    self._check_button.render(rl.Rectangle(x, y, w, BUTTON_HEIGHT))
+    y += BUTTON_HEIGHT + BUTTON_SPACING
+
+    # unchecked (or failed check) keeps both enabled so a hard reset is always reachable
+    soft_ok = self._check_result in (None, UpdateCheck.FAST_FORWARD)
+    hard_ok = self._check_result in (None, UpdateCheck.DIVERGED)
     half_w = (w - BUTTON_SPACING) / 2
-    for i, button in enumerate((self._soft_button, self._hard_button)):
-      button.set_enabled(not self._updating)
-      button.render(rl.Rectangle(x + i * (half_w + BUTTON_SPACING), y, half_w, button_height))
+    for i, (button, ok) in enumerate(((self._soft_button, soft_ok), (self._hard_button, hard_ok))):
+      button.set_enabled(ok and not busy)
+      button.render(rl.Rectangle(x + i * (half_w + BUTTON_SPACING), y, half_w, BUTTON_HEIGHT))
