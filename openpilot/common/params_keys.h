@@ -317,6 +317,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"EnableRemoteUI", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"KonikApi", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"KonikDongleId", {PERSISTENT, STRING}},
+    {"SidebarNetworkIP", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"SidebarShowBattery", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"SidebarShowConnect", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"SidebarShowGps", {PERSISTENT | BACKUP, BOOL, "0"}},

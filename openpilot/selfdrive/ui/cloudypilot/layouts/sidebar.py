@@ -1,4 +1,5 @@
 import pyray as rl
+import socket
 import time
 from collections.abc import Callable
 from openpilot.cereal import log
@@ -29,6 +30,16 @@ HOME_BTN = rl.Rectangle(60, 860, 180, 180)
 
 ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType
+
+
+def wifi_ip_address() -> str:
+  try:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+      # Connecting a UDP socket only resolves the route, nothing is sent
+      sock.connect(("8.8.8.8", 80))
+      return sock.getsockname()[0]
+  except OSError:
+    return ""
 
 
 class Colors:
@@ -73,6 +84,7 @@ class SidebarCP(Widget, SidebarSP):
     SidebarSP.__init__(self)
     self._net_type = NETWORK_TYPES[NetworkType.none]
     self._net_strength = 0
+    self._net_ip = ""
 
     self._temp_status = MetricData(tr_noop("TEMP"), tr_noop("GOOD"), Colors.GOOD)
     self._panda_status = MetricData(tr_noop("VEHICLE"), tr_noop("ONLINE"), Colors.GOOD)
@@ -134,7 +146,9 @@ class SidebarCP(Widget, SidebarSP):
     self._update_load_status(device_state)
 
   def _update_network_status(self, device_state):
-    self._net_type = NETWORK_TYPES.get(device_state.networkType.raw, tr_noop("Unknown"))
+    net_type = device_state.networkType.raw
+    self._net_type = NETWORK_TYPES.get(net_type, tr_noop("Unknown"))
+    self._net_ip = wifi_ip_address() if ui_state.sidebar_network_ip and net_type == NetworkType.wifi else ""
     strength = device_state.networkStrength
     self._net_strength = max(0, min(5, strength.raw + 1)) if strength.raw > 0 else 0
 
@@ -329,7 +343,13 @@ class SidebarCP(Widget, SidebarSP):
     # Network type text
     text_y = rect.y + 247
     text_pos = rl.Vector2(rect.x + 58, text_y)
-    rl.draw_text_ex(self._font_regular, tr(self._net_type), text_pos, FONT_SIZE, 0, Colors.WHITE)
+    text, font_size = tr(self._net_type), FONT_SIZE
+    # The mic indicator sits on the same row, so the IP only shows while it's hidden
+    if self._net_ip and not self._recording_audio:
+      text = self._net_ip
+      max_width = rect.width - 58 - METRIC_MARGIN
+      font_size = min(FONT_SIZE, FONT_SIZE * max_width / measure_text_cached(self._font_regular, text, FONT_SIZE).x)
+    rl.draw_text_ex(self._font_regular, text, text_pos, font_size, 0, Colors.WHITE)
 
   def _draw_metrics(self, rect: rl.Rectangle):
     if gui_app.cloudypilot_ui():

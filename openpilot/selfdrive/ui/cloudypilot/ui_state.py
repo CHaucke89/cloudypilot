@@ -7,6 +7,7 @@ class UIStateCP:
     self.use_feet: bool = False
     self.remote_ui: bool = False
     self.sidebar_show_network: bool = True
+    self.sidebar_network_ip: bool = False
     self.sidebar_show_temp: bool = True
     self.sidebar_show_vehicle: bool = True
     self.sidebar_show_connect: bool = True
@@ -34,6 +35,7 @@ class UIStateCP:
     self.use_feet = self.params.get_bool("UseFeetGPS")
     self.remote_ui = self.params.get_bool("EnableRemoteUI")
     self.sidebar_show_network = self.params.get_bool("SidebarShowNetwork")
+    self.sidebar_network_ip = self.params.get_bool("SidebarNetworkIP")
     self.sidebar_show_temp = self.params.get_bool("SidebarShowTemp")
     self.sidebar_show_vehicle = self.params.get_bool("SidebarShowVehicle")
     self.sidebar_show_connect = self.params.get_bool("SidebarShowConnect")
