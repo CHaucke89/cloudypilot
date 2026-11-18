@@ -19,6 +19,12 @@ class PersonalizeLayout(Widget):
       description=lambda: tr("Show the signal strength and connection type in the sidebar."),
       param="SidebarShowNetwork",
     )
+    network_ip = toggle_item_sp(
+      title=lambda: tr("Sidebar: Network IP Address"),
+      description=lambda: tr("Show the device's IP address instead of Wi-Fi when connected to Wi-Fi."),
+      param="SidebarNetworkIP",
+      enabled=lambda: network.action_item.get_state(),
+    )
 
     tile_toggles = [
       ("SidebarShowTemp", lambda: tr("Sidebar: Temperature"), lambda: tr("Show the device temperature status in the sidebar.")),
@@ -42,7 +48,7 @@ class PersonalizeLayout(Widget):
       enabled=lambda: temp.action_item.get_state(),
     )
 
-    return [network, temp, temp_degrees, *self._tile_items[1:]]
+    return [network, network_ip, temp, temp_degrees, *self._tile_items[1:]]
 
   def _tile_item(self, param, title, desc):
     item = toggle_item_sp(title=title, description=desc, param=param)
