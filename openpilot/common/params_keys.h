@@ -330,6 +330,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"SidebarShowUpdate", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"SidebarShowVehicle", {PERSISTENT | BACKUP, BOOL, "1"}},
     {"SidebarTempDegrees", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"SidebarTileOrder", {PERSISTENT | BACKUP, JSON}},
     {"TorqueBarFade", {PERSISTENT, BOOL, "1"}},
     {"UseCustomSR", {PERSISTENT, BOOL, "0"}},
     {"UseFeetGPS", {PERSISTENT, BOOL, "0"}},
