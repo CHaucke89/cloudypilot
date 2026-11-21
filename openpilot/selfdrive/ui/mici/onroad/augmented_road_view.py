@@ -181,7 +181,7 @@ class AugmentedRoadView(CameraView):
     self._alert_renderer = AlertRenderer()
     self._driver_state_renderer = DriverStateRenderer()
     self._confidence_ball = ConfidenceBall()
-    self._offroad_label = UnifiedLabel("start the car to\nuse sunnypilot", 54, FontWeight.DISPLAY,
+    self._offroad_label = UnifiedLabel("start the car to\nuse cloudypilot", 54, FontWeight.DISPLAY,
                                        text_color=rl.Color(255, 255, 255, int(255 * 0.9)),
                                        alignment=TextAlignment.CENTER,
                                        alignment_vertical=TextAlignmentVertical.MIDDLE)
@@ -201,7 +201,7 @@ class AugmentedRoadView(CameraView):
     elif ui_state.ignition and not ui_state.started:
       self._offroad_label.set_text("openpilot can't start\ncheck alerts")
     else:
-      self._offroad_label.set_text("start the car to\nuse sunnypilot")
+      self._offroad_label.set_text("start the car to\nuse cloudypilot")
 
   def _handle_mouse_release(self, mouse_pos: MousePos):
     # Don't trigger click callback if bookmark was triggered

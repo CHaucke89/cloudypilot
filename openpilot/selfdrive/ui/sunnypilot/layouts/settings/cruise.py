@@ -19,14 +19,14 @@ class PanelType(IntEnum):
   SLA = 1
 
 
-ICBM_DESC = tr_noop("When enabled, sunnypilot will attempt to manage the built-in cruise control buttons " +
+ICBM_DESC = tr_noop("When enabled, cloudypilot will attempt to manage the built-in cruise control buttons " +
                     "by emulating button presses for limited longitudinal control.")
 ICMB_UNAVAILABLE = tr_noop("Intelligent Cruise Button Management is currently unavailable on this platform.")
-ICMB_UNAVAILABLE_LONG_AVAILABLE = tr_noop("Disable the sunnypilot Longitudinal Control (alpha) toggle to allow Intelligent Cruise Button Management.")
-ICMB_UNAVAILABLE_LONG_UNAVAILABLE = tr_noop("sunnypilot Longitudinal Control is the default longitudinal control for this platform.")
+ICMB_UNAVAILABLE_LONG_AVAILABLE = tr_noop("Disable the cloudypilot Longitudinal Control (alpha) toggle to allow Intelligent Cruise Button Management.")
+ICMB_UNAVAILABLE_LONG_UNAVAILABLE = tr_noop("cloudypilot Longitudinal Control is the default longitudinal control for this platform.")
 
 ACC_ENABLED_DESCRIPTION = tr_noop("Enable custom Short & Long press increments for cruise speed increase/decrease.")
-ACC_NOLONG_DESCRIPTION = tr_noop("This feature can only be used with sunnypilot longitudinal control enabled.")
+ACC_NOLONG_DESCRIPTION = tr_noop("This feature can only be used with cloudypilot longitudinal control enabled.")
 ACC_PCMCRUISE_DISABLED_DESCRIPTION = tr_noop("This feature is not supported on this platform due to vehicle limitations.")
 ONROAD_ONLY_DESCRIPTION = tr_noop("Start the vehicle to check vehicle compatibility.")
 
@@ -59,8 +59,8 @@ class CruiseLayout(Widget):
 
     self.accel_boost_toggle = toggle_item_sp(
       title=tr("Acceleration Boost"),
-      description=tr("Adds a small push on top of sunnypilot's own acceleration, stronger in Aggressive and gentler in Relaxed. " +
-                     "Eases off in curves and when sunnypilot slows or stops. Never goes past your set speed, and lead-car following still comes first."),
+      description=tr("Adds a small push on top of cloudypilot's own acceleration, stronger in Aggressive and gentler in Relaxed. " +
+                     "Eases off in curves and when cloudypilot slows or stops. Never goes past your set speed, and lead-car following still comes first."),
       param="AccelBoostSP")
 
     self.custom_acc_toggle = toggle_item_sp(

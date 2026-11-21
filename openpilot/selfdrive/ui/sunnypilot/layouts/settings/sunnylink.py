@@ -178,7 +178,7 @@ class SunnylinkLayout(Widget):
     )
     self._sunnylink_uploader_toggle = toggle_item_sp(
       title=tr("Enable sunnylink uploader (infrastructure test)"),
-      description=tr("Enable sunnylink uploader to allow sunnypilot to upload your driving data to sunnypilot servers. ") +
+      description=tr("Enable sunnylink uploader to allow cloudypilot to upload your driving data to sunnypilot servers. ") +
                   tr("(Only for highest tiers, and does NOT bring ANY benefit to you yet. We are just testing data volume.)"),
       param="EnableSunnylinkUploader"
     )
@@ -225,13 +225,13 @@ class SunnylinkLayout(Widget):
       gui_app.push_widget(self._sunnylink_pairing_dialog)
 
   def _handle_backup_btn(self):
-    backup_dialog = ConfirmDialog(text=tr("Are you sure you want to backup your current sunnypilot settings?"), confirm_text="Backup",
+    backup_dialog = ConfirmDialog(text=tr("Are you sure you want to backup your current cloudypilot settings?"), confirm_text="Backup",
                                   callback=self._backup_handler)
     gui_app.push_widget(backup_dialog)
 
   def _handle_restore_btn(self):
     self._restore_btn.set_enabled(False)
-    restore_dialog = ConfirmDialog(text=tr("Are you sure you want to restore the last backed up sunnypilot settings?"),
+    restore_dialog = ConfirmDialog(text=tr("Are you sure you want to restore the last backed up cloudypilot settings?"),
                                    confirm_text="Restore", callback=self._restore_handler)
     gui_app.push_widget(restore_dialog)
 

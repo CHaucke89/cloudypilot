@@ -162,7 +162,7 @@ class DeviceLayoutSP(DeviceLayout):
         ))
 
     gui_app.push_widget(ConfirmDialog(
-      text=tr("Are you sure you want to reset all sunnypilot settings to default? Once the settings are reset, there is no going back."),
+      text=tr("Are you sure you want to reset all cloudypilot settings to default? Once the settings are reset, there is no going back."),
       confirm_text=tr("Reset"), callback=_second_confirm
     ))
 

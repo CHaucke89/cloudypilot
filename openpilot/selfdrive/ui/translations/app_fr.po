@@ -138,8 +138,8 @@ msgid "Change Language"
 msgstr "Changer la langue"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Changing this setting will restart sunnypilot if the car is powered on."
-msgstr "La modification de ce réglage redémarrera sunnypilot si la voiture est sous tension."
+msgid "Changing this setting will restart cloudypilot if the car is powered on."
+msgstr "La modification de ce réglage redémarrera cloudypilot si la voiture est sous tension."
 
 #: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
 msgid "Choose your sponsorship tier and confirm your support"
@@ -166,8 +166,8 @@ msgid "Decline"
 msgstr "Refuser"
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "Decline, uninstall sunnypilot"
-msgstr "Refuser, désinstaller sunnypilot"
+msgid "Decline, uninstall cloudypilot"
+msgstr "Refuser, désinstaller cloudypilot"
 
 #: openpilot/selfdrive/ui/layouts/settings/settings.py
 msgid "Developer"
@@ -258,16 +258,16 @@ msgid "Enable Tethering"
 msgstr "Activer le partage de connexion"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Enable driver monitoring even when sunnypilot is not engaged."
-msgstr "Activer la surveillance du conducteur même lorsque sunnypilot n'est pas engagé."
+msgid "Enable driver monitoring even when cloudypilot is not engaged."
+msgstr "Activer la surveillance du conducteur même lorsque cloudypilot n'est pas engagé."
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Enable sunnypilot"
-msgstr "Activer sunnypilot"
+msgid "Enable cloudypilot"
+msgstr "Activer cloudypilot"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Enable the sunnypilot longitudinal control (alpha) toggle to allow Experimental mode."
-msgstr "Activez l'option de contrôle longitudinal sunnypilot (alpha) pour autoriser le mode expérimental."
+msgid "Enable the cloudypilot longitudinal control (alpha) toggle to allow Experimental mode."
+msgstr "Activez l'option de contrôle longitudinal cloudypilot (alpha) pour autoriser le mode expérimental."
 
 #: system/ui/widgets/network.py
 msgid "Enter APN"
@@ -575,8 +575,8 @@ msgid "Review Training Guide"
 msgstr "Consulter le guide d'entraînement"
 
 #: openpilot/selfdrive/ui/layouts/settings/device.py
-msgid "Review the rules, features, and limitations of sunnypilot"
-msgstr "Consultez les règles, fonctionnalités et limitations de sunnypilot"
+msgid "Review the rules, features, and limitations of cloudypilot"
+msgstr "Consultez les règles, fonctionnalités et limitations de cloudypilot"
 
 #: openpilot/selfdrive/ui/layouts/settings/software.py
 msgid "SELECT"
@@ -703,12 +703,12 @@ msgid "Waiting to start"
 msgstr "En attente de démarrage"
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "Welcome to sunnypilot"
-msgstr "Bienvenue sur sunnypilot"
+msgid "Welcome to cloudypilot"
+msgstr "Bienvenue sur cloudypilot"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "When enabled, pressing the accelerator pedal will disengage sunnypilot."
-msgstr "Lorsqu'activé, appuyer sur la pédale d'accélérateur désengagera sunnypilot."
+msgid "When enabled, pressing the accelerator pedal will disengage cloudypilot."
+msgstr "Lorsqu'activé, appuyer sur la pédale d'accélérateur désengagera cloudypilot."
 
 #: openpilot/selfdrive/ui/layouts/sidebar.py
 msgid "Wi-Fi"
@@ -723,12 +723,12 @@ msgid "Wrong password"
 msgstr "Mot de passe incorrect"
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "You must accept the Terms of Service in order to use sunnypilot."
-msgstr "Vous devez accepter les conditions d'utilisation pour utiliser sunnypilot."
+msgid "You must accept the Terms of Service in order to use cloudypilot."
+msgstr "Vous devez accepter les conditions d'utilisation pour utiliser cloudypilot."
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "You must accept the Terms of Service to use sunnypilot. Read the latest terms at https://sunnypilot.ai/terms before continuing."
-msgstr "Vous devez accepter les conditions d'utilisation pour utiliser sunnypilot. Consultez les dernières conditions sur https://sunnypilot.ai/terms avant de continuer."
+msgid "You must accept the Terms of Service to use cloudypilot. Read the latest terms at https://sunnypilot.ai/terms before continuing."
+msgstr "Vous devez accepter les conditions d'utilisation pour utiliser cloudypilot. Consultez les dernières conditions sur https://sunnypilot.ai/terms avant de continuer."
 
 #: openpilot/selfdrive/ui/onroad/driver_camera_dialog.py
 msgid "camera starting"
@@ -811,19 +811,19 @@ msgid "right"
 msgstr "droite"
 
 #: openpilot/selfdrive/ui/layouts/settings/developer.py
-msgid "sunnypilot Longitudinal Control (Alpha)"
-msgstr "Contrôle longitudinal sunnypilot (Alpha)"
+msgid "cloudypilot Longitudinal Control (Alpha)"
+msgstr "Contrôle longitudinal cloudypilot (Alpha)"
 
 #: openpilot/selfdrive/ui/onroad/alert_renderer.py
-msgid "sunnypilot Unavailable"
-msgstr "sunnypilot indisponible"
+msgid "cloudypilot Unavailable"
+msgstr "cloudypilot indisponible"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "sunnypilot longitudinal control may come in a future update."
-msgstr "Le contrôle longitudinal sunnypilot pourrait arriver dans une future mise à jour."
+msgid "cloudypilot longitudinal control may come in a future update."
+msgstr "Le contrôle longitudinal cloudypilot pourrait arriver dans une future mise à jour."
 
 #: openpilot/selfdrive/ui/layouts/settings/device.py
-msgid "sunnypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."
+msgid "cloudypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."
 msgstr ""
 
 #: system/ui/widgets/network.py
