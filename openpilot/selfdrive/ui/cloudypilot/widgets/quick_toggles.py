@@ -1,14 +1,17 @@
 import pyray as rl
 from openpilot.selfdrive.ui.cloudypilot.widgets.card import CARD_COLOR, CARD_PADDING, HEADER_FONT_SIZE, ROW_SPACING, VALUE_COLOR, render_divider
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.system.ui.lib.application import FontWeight
+from openpilot.system.ui.lib.application import FontWeight, gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.label import gui_label
-from openpilot.system.ui.widgets.toggle import HEIGHT as TOGGLE_HEIGHT, WIDTH as TOGGLE_WIDTH, Toggle
+from openpilot.system.ui.sunnypilot.widgets.toggle import ToggleSP as Toggle
+from openpilot.system.ui.sunnypilot.lib.styles import style
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.lib.styles import style
 
 LABEL_FONT_SIZE = 44
-ROW_HEIGHT = 88
+ROW_HEIGHT = 100
 
 
 def _param_toggle(param: str) -> Toggle:
@@ -58,7 +61,8 @@ class QuickTogglesWidget(Widget):
       toggle.set_state(available and ui_state.params.get_bool(param))
 
       label = title() if available else f"{title()} ({tr('Unavailable')})"
-      gui_label(rl.Rectangle(x, y, w - TOGGLE_WIDTH - ROW_SPACING, ROW_HEIGHT), label, LABEL_FONT_SIZE,
+      gui_label(rl.Rectangle(x, y, w - style.TOGGLE_WIDTH - ROW_SPACING, ROW_HEIGHT), label, LABEL_FONT_SIZE,
                 rl.WHITE if available else VALUE_COLOR)
-      toggle.render(rl.Rectangle(x + w - TOGGLE_WIDTH, y + (ROW_HEIGHT - TOGGLE_HEIGHT) / 2, TOGGLE_WIDTH, TOGGLE_HEIGHT))
+      toggle.render(rl.Rectangle(x + w - style.TOGGLE_WIDTH, y + (ROW_HEIGHT - style.TOGGLE_BG_HEIGHT + style.ITEM_PADDING) / 2,
+                                 style.TOGGLE_WIDTH, style.TOGGLE_HEIGHT))
       y += ROW_HEIGHT
