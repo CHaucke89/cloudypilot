@@ -4,16 +4,14 @@ from enum import Enum
 
 import pyray as rl
 from openpilot.common.basedir import BASEDIR
-from openpilot.common.git import get_branch
+from openpilot.common.git import get_branch, get_short_branch
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.system.ui.lib.application import gui_app, FontWeight, FONT_SCALE
+from openpilot.system.ui.lib.application import FontWeight
 from openpilot.system.ui.lib.multilang import tr
-from openpilot.system.ui.lib.text_measure import measure_text_cached
-from openpilot.system.ui.lib.wrap_text import wrap_text
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.button import Button, ButtonStyle
-from openpilot.system.ui.widgets.label import Label
+from openpilot.system.ui.widgets.label import gui_label
 
 YELLOW = rl.Color(255, 204, 0, 255)
 YELLOW_PRESSED = rl.Color(214, 170, 0, 255)
@@ -40,9 +38,18 @@ SOFT_UPDATE_COMMANDS = (
   ["git", "submodule", "update", "--init", "--recursive"],
 )
 
+CARD_COLOR = rl.Color(51, 51, 51, 255)
+DIVIDER_COLOR = rl.Color(86, 86, 86, 255)
+VALUE_COLOR = rl.Color(170, 170, 170, 255)
+CARD_PADDING = 56
+HEADER_FONT_SIZE = 48
+VALUE_FONT_SIZE = 40
+TEXT_SPACING = 8
+ROW_SPACING = 24
 BUTTON_SPACING = 24
 BUTTON_HEIGHT = 96
-BUTTON_FONT_SIZE = 44  # right column is narrow; default 60 won't fit two labels side by side
+ROW_BUTTON_WIDTH = 300
+BUTTON_FONT_SIZE = 44
 
 
 class UpdateCheck(Enum):
@@ -78,21 +85,26 @@ class GreenButton(Button):
       self._background_color = GREEN_PRESSED if self.is_pressed else GREEN
     self._label.set_text_color(BUTTON_TEXT)
 
-class UpdateNowWidget(Widget):
-  """Card with Check/Soft/Hard update buttons; Check gates Soft (fast-forward) vs Hard (force-pushed)."""
+class SoftwareWidget(Widget):
+  """Branch selector beside instant update; Check gates Soft (fast-forward) vs Hard (force-pushed)."""
 
   def __init__(self):
     super().__init__()
+    self._open_software_callback = None
     self._updating = False
     self._checking = False
     self._check_result: UpdateCheck | None = None
+    self._select_button = Button(lambda: tr("Select"), lambda: self._open_software_callback() if self._open_software_callback else None,
+                                 font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.PRIMARY)
     self._check_button = GreenButton(lambda: tr("Checking...") if self._checking else tr("Check"),
                                      self._start_check, font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
     self._hard_button = RedButton(lambda: tr("Updating...") if self._updating else tr("Hard Update"),
                                      lambda: self._start_update(HARD_UPDATE_COMMANDS), font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
     self._soft_button = YellowButton(lambda: tr("Updating...") if self._updating else tr("Soft Update"),
                                      lambda: self._start_update(SOFT_UPDATE_COMMANDS), font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
-    self._title_label = Label(lambda: tr("Instant Update"), font_weight=FontWeight.MEDIUM, font_size=64)
+
+  def set_open_software_callback(self, callback):
+    self._open_software_callback = callback
 
   def _start_update(self, commands):
     if self._updating:
@@ -136,7 +148,7 @@ class UpdateNowWidget(Widget):
       return tr("Update available")
     if self._check_result == UpdateCheck.DIVERGED:
       return tr("Branch was force-pushed")
-    return tr(f"Update to latest {UPDATE_BRANCH}")
+    return tr("Check for updates")
 
   def _run_update(self, commands):
     cmd: list[str] = []
@@ -151,33 +163,32 @@ class UpdateNowWidget(Widget):
       cloudlog.exception("immediate update failed")
       self._updating = False
 
+  def _render_row(self, x: float, y: float, w: float, header: str, value: str, button: Button) -> float:
+    text_w = w - ROW_BUTTON_WIDTH - BUTTON_SPACING
+    text_y = y + (BUTTON_HEIGHT - (HEADER_FONT_SIZE + TEXT_SPACING + VALUE_FONT_SIZE)) / 2
+    gui_label(rl.Rectangle(x, text_y, text_w, HEADER_FONT_SIZE), header, HEADER_FONT_SIZE, rl.WHITE, FontWeight.MEDIUM)
+    text_y += HEADER_FONT_SIZE + TEXT_SPACING
+    gui_label(rl.Rectangle(x, text_y, text_w, VALUE_FONT_SIZE), value, VALUE_FONT_SIZE, VALUE_COLOR)
+    button.render(rl.Rectangle(x + w - ROW_BUTTON_WIDTH, y, ROW_BUTTON_WIDTH, BUTTON_HEIGHT))
+    return y + BUTTON_HEIGHT
+
   def _render(self, rect: rl.Rectangle):
-    rl.draw_rectangle_rounded(rl.Rectangle(rect.x, rect.y, rect.width, rect.height), 0.04, 20, rl.Color(51, 51, 51, 255))
+    rl.draw_rectangle_rounded(rect, 0.04, 20, CARD_COLOR)
 
-    x = rect.x + 56
-    w = rect.width - 112
-    spacing = 32
+    x = rect.x + CARD_PADDING
+    w = rect.width - 2 * CARD_PADDING
+    content_h = BUTTON_HEIGHT * 3 + ROW_SPACING * 2
+    y = rect.y + (rect.height - content_h) / 2
 
-    desc_font = gui_app.font(FontWeight.NORMAL)
-    wrapped_desc = wrap_text(desc_font, self._status_text(), 40, int(w))
-
-    content_height = 64 + spacing + len(wrapped_desc) * 40 * FONT_SCALE + spacing + BUTTON_HEIGHT * 2 + BUTTON_SPACING
-    y = rect.y + (rect.height - content_height) / 2
-
-    self._title_label.render(rl.Rectangle(rect.x, y, rect.width, 64))
-    y += 64 + spacing
-
-    for line in wrapped_desc:
-      text_size = measure_text_cached(desc_font, line, 40)
-      rl.draw_text_ex(desc_font, line, rl.Vector2(int(rect.x + (rect.width - text_size.x) // 2), int(y)), 40, 0, rl.WHITE)
-      y += 40 * FONT_SCALE
-
-    y += spacing
+    y = self._render_row(x, y, w, tr("Current Branch"), get_short_branch(), self._select_button)
+    y += ROW_SPACING / 2
+    rl.draw_line_ex(rl.Vector2(x, y), rl.Vector2(x + w, y), 2, DIVIDER_COLOR)
+    y += ROW_SPACING / 2
 
     busy = self._updating or self._checking
     self._check_button.set_enabled(not busy)
-    self._check_button.render(rl.Rectangle(x, y, w, BUTTON_HEIGHT))
-    y += BUTTON_HEIGHT + BUTTON_SPACING
+    y = self._render_row(x, y, w, tr("Instant Update"), self._status_text(), self._check_button)
+    y += ROW_SPACING
 
     # unchecked (or failed check) keeps both enabled so a hard reset is always reachable
     soft_ok = self._check_result in (None, UpdateCheck.FAST_FORWARD)

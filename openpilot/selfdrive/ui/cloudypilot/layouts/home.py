@@ -1,13 +1,11 @@
 import pyray as rl
 from openpilot.selfdrive.ui.sunnypilot.layouts.home import HomeLayoutSP, HomeLayoutState, HEAD_BUTTON_FONT_SIZE, SPACING
-from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.text_measure import measure_text_cached
 from openpilot.system.ui.lib.multilang import tr, trn
 from openpilot.system.ui.widgets.label import gui_label
 from openpilot.selfdrive.ui.cloudypilot.widgets.current_model import ModelWidget
-from openpilot.selfdrive.ui.cloudypilot.widgets.current_branch import BranchWidget
-from openpilot.selfdrive.ui.cloudypilot.widgets.update_now import UpdateNowWidget
+from openpilot.selfdrive.ui.cloudypilot.widgets.software import SoftwareWidget
 
 BRAND_FONT_SIZE = 48
 BRAND_DESC_SPACING = 12
@@ -18,8 +16,7 @@ class HomeLayoutCP(HomeLayoutSP):
     super().__init__()
 
     self._model_widget = ModelWidget()
-    self._branch_widget = BranchWidget()
-    self._update_widget = UpdateNowWidget()
+    self._software_widget = SoftwareWidget()
 
   def _render_header(self):
     font = gui_app.font(FontWeight.MEDIUM)
@@ -80,16 +77,6 @@ class HomeLayoutCP(HomeLayoutSP):
     return top, bottom
 
   def _render_left_column(self):
-    model_rect, branch_rect = self._card_rects(self.left_column_rect)
+    model_rect, software_rect = self._card_rects(self.left_column_rect)
     self._model_widget.render(model_rect)
-    self._branch_widget.render(branch_rect)
-
-  def _render_right_column(self):
-    # Setup widget fills the whole column until paired; once paired it's a single card with room for the update card below
-    if not ui_state.prime_state.is_paired():
-      super()._render_right_column()
-      return
-
-    offroad_rect, update_rect = self._card_rects(self.right_column_rect)
-    self._setup_widget.render(offroad_rect)
-    self._update_widget.render(update_rect)
+    self._software_widget.render(software_rect)
