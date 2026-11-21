@@ -1,6 +1,6 @@
 import pyray as rl
 from openpilot.selfdrive.ui.cloudypilot.widgets.card import (BUTTON_FONT_SIZE, BUTTON_HEIGHT, BUTTON_SPACING, CARD_COLOR, CARD_PADDING, ROW_SPACING,
-                                                              RedButton, YellowButton, render_divider, render_row)
+                                                              OrangeButton, YellowButton, render_divider, render_row)
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr
@@ -29,9 +29,9 @@ class DeviceWidget(Widget):
     self._soft_reboot_button = YellowButton(lambda: tr("Soft Reboot"),
                                             lambda: _confirm_param(tr("Are you sure you want to soft reboot?"), tr("Soft Reboot"), "DoSoftReboot"),
                                             font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
-    self._reboot_button = RedButton(lambda: tr("Reboot"),
-                                    lambda: _confirm_param(tr("Are you sure you want to reboot?"), tr("Reboot"), "DoReboot"),
-                                    font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
+    self._reboot_button = OrangeButton(lambda: tr("Reboot"),
+                                       lambda: _confirm_param(tr("Are you sure you want to reboot?"), tr("Reboot"), "DoReboot"),
+                                       font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.NORMAL)
     self._power_off_button = Button(lambda: tr("Power Off"),
                                     lambda: _confirm_param(tr("Are you sure you want to power off?"), tr("Power Off"), "DoShutdown"),
                                     font_size=BUTTON_FONT_SIZE, button_style=ButtonStyle.DANGER)

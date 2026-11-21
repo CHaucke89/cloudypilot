@@ -6,6 +6,9 @@ from openpilot.system.ui.widgets.label import gui_label
 YELLOW = rl.Color(255, 204, 0, 255)
 YELLOW_PRESSED = rl.Color(214, 170, 0, 255)
 YELLOW_DISABLED = rl.Color(120, 100, 20, 255)
+ORANGE = rl.Color(255, 140, 0, 255)
+ORANGE_PRESSED = rl.Color(214, 117, 0, 255)
+ORANGE_DISABLED = rl.Color(120, 70, 20, 255)
 RED = rl.Color(255, 70, 70, 255)
 RED_PRESSED = rl.Color(226, 44, 44, 255)
 RED_DISABLED = rl.Color(120, 20, 20, 255)
@@ -35,6 +38,15 @@ class YellowButton(Button):
       self._background_color = YELLOW_DISABLED
     else:
       self._background_color = YELLOW_PRESSED if self.is_pressed else YELLOW
+    self._label.set_text_color(BUTTON_TEXT)
+
+class OrangeButton(Button):
+  def _update_state(self):
+    super()._update_state()
+    if not self.enabled:
+      self._background_color = ORANGE_DISABLED
+    else:
+      self._background_color = ORANGE_PRESSED if self.is_pressed else ORANGE
     self._label.set_text_color(BUTTON_TEXT)
 
 class RedButton(Button):
