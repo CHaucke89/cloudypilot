@@ -6,6 +6,9 @@ from openpilot.system.ui.lib.multilang import tr, trn
 from openpilot.system.ui.widgets.label import gui_label
 from openpilot.selfdrive.ui.cloudypilot.widgets.current_model import ModelWidget
 from openpilot.selfdrive.ui.cloudypilot.widgets.software import SoftwareWidget
+from openpilot.selfdrive.ui.cloudypilot.widgets.device import DeviceWidget
+from openpilot.selfdrive.ui.cloudypilot.widgets.quick_toggles import QuickTogglesWidget
+from openpilot.selfdrive.ui.ui_state import ui_state
 
 BRAND_FONT_SIZE = 48
 BRAND_DESC_SPACING = 12
@@ -17,6 +20,8 @@ class HomeLayoutCP(HomeLayoutSP):
 
     self._model_widget = ModelWidget()
     self._software_widget = SoftwareWidget()
+    self._device_widget = DeviceWidget()
+    self._quick_toggles_widget = QuickTogglesWidget()
 
   def _render_header(self):
     font = gui_app.font(FontWeight.MEDIUM)
@@ -80,3 +85,13 @@ class HomeLayoutCP(HomeLayoutSP):
     model_rect, software_rect = self._card_rects(self.left_column_rect)
     self._model_widget.render(model_rect)
     self._software_widget.render(software_rect)
+
+  def _render_right_column(self):
+    # registration fills the whole column until paired
+    if not ui_state.prime_state.is_paired():
+      super()._render_right_column()
+      return
+
+    device_rect, toggles_rect = self._card_rects(self.right_column_rect)
+    self._device_widget.render(device_rect)
+    self._quick_toggles_widget.render(toggles_rect)
