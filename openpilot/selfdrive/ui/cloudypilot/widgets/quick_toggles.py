@@ -49,9 +49,6 @@ class QuickTogglesWidget(Widget):
     content_h = HEADER_FONT_SIZE + ROW_SPACING + ROW_HEIGHT * len(self._rows) + ROW_SPACING * (len(self._rows) - 1)
     y = rect.y + (rect.height - content_h) / 2
 
-    gui_label(rl.Rectangle(x, y, w, HEADER_FONT_SIZE), tr("Quick Toggles"), HEADER_FONT_SIZE, rl.WHITE, FontWeight.MEDIUM)
-    y += HEADER_FONT_SIZE + ROW_SPACING
-
     icbm_available = self._icbm_available()
     for i, (title, param, toggle) in enumerate(self._rows):
       if i > 0:
