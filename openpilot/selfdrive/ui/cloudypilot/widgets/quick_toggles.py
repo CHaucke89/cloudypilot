@@ -46,7 +46,7 @@ class QuickTogglesWidget(Widget):
 
     x = rect.x + CARD_PADDING
     w = rect.width - 2 * CARD_PADDING
-    content_h = ROW_SPACING + ROW_HEIGHT * len(self._rows) + ROW_SPACING * (len(self._rows) - 1)
+    content_h = ROW_HEIGHT * len(self._rows) + ROW_SPACING * (len(self._rows) - 1)
     y = rect.y + (rect.height - content_h) / 2
 
     icbm_available = self._icbm_available()
