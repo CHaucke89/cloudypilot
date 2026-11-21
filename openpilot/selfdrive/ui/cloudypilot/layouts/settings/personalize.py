@@ -1,6 +1,6 @@
 from openpilot.selfdrive.ui.cloudypilot.layouts.sidebar import MAX_TILES
 from openpilot.system.ui.lib.multilang import tr
-from openpilot.system.ui.sunnypilot.widgets.list_view import toggle_item_sp
+from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.scroller_tici import Scroller
 
@@ -26,6 +26,11 @@ class PersonalizeLayout(Widget):
       enabled=lambda: network.action_item.get_state(),
     )
 
+    reorder = ListItemSP(
+      title=lambda: tr("Reorder Sidebar Tiles"),
+      description=lambda: tr("While parked, hold a sidebar tile for half a second until it lifts, then drag it to a new spot."),
+    )
+
     tile_toggles = [
       ("SidebarShowTemp", lambda: tr("Sidebar: Temperature"), lambda: tr("Show the device temperature status in the sidebar.")),
       ("SidebarShowVehicle", lambda: tr("Sidebar: Vehicle"), lambda: tr("Show the vehicle (panda) connection status in the sidebar.")),
@@ -48,7 +53,7 @@ class PersonalizeLayout(Widget):
       enabled=lambda: temp.action_item.get_state(),
     )
 
-    return [network, network_ip, temp, temp_degrees, *self._tile_items[1:]]
+    return [network, network_ip, reorder, temp, temp_degrees, *self._tile_items[1:]]
 
   def _tile_item(self, param, title, desc):
     item = toggle_item_sp(title=title, description=desc, param=param)
