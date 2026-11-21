@@ -1,7 +1,7 @@
 import pyray as rl
-from openpilot.selfdrive.ui.cloudypilot.widgets.card import CARD_COLOR, CARD_PADDING, HEADER_FONT_SIZE, ROW_SPACING, VALUE_COLOR, render_divider
+from openpilot.selfdrive.ui.cloudypilot.widgets.card import CARD_COLOR, CARD_PADDING, ROW_SPACING, VALUE_COLOR, render_divider
 from openpilot.selfdrive.ui.ui_state import ui_state
-from openpilot.system.ui.lib.application import FontWeight, gui_app
+from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.label import gui_label
@@ -46,10 +46,8 @@ class QuickTogglesWidget(Widget):
 
     x = rect.x + CARD_PADDING
     w = rect.width - 2 * CARD_PADDING
-    content_h = HEADER_FONT_SIZE + ROW_SPACING + ROW_HEIGHT * len(self._rows) + ROW_SPACING * (len(self._rows) - 1)
+    content_h = ROW_SPACING + ROW_HEIGHT * len(self._rows) + ROW_SPACING * (len(self._rows) - 1)
     y = rect.y + (rect.height - content_h) / 2
-
-    y += ROW_SPACING + 6
 
     icbm_available = self._icbm_available()
     for i, (title, param, toggle) in enumerate(self._rows):
