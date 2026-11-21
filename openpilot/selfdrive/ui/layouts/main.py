@@ -74,7 +74,7 @@ class MainLayout(Widget):
     self._layouts[MainState.HOME]._setup_widget.set_open_settings_callback(lambda: self.open_settings(PanelType.FIREHOSE))
     if gui_app.cloudypilot_ui():
       self._layouts[MainState.HOME]._model_widget.set_open_models_callback(lambda: self.open_settings(PanelType.MODELS))
-      self._layouts[MainState.HOME]._branch_widget.set_open_software_callback(lambda: self.open_settings(PanelType.SOFTWARE))
+      self._layouts[MainState.HOME]._software_widget.set_open_software_callback(lambda: self.open_settings(PanelType.SOFTWARE))
     self._layouts[MainState.SETTINGS].set_callbacks(on_close=self._set_mode_for_state)
 
     for layout in (self._layouts[MainState.ONROAD], self._home_body_layout):
