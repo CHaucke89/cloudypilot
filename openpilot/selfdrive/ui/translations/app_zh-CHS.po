@@ -138,7 +138,7 @@ msgid "Change Language"
 msgstr "更改语言"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Changing this setting will restart sunnypilot if the car is powered on."
+msgid "Changing this setting will restart cloudypilot if the car is powered on."
 msgstr ""
 
 #: system/ui/sunnypilot/widgets/sunnylink_pairing_dialog.py
@@ -166,7 +166,7 @@ msgid "Decline"
 msgstr "拒绝"
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "Decline, uninstall sunnypilot"
+msgid "Decline, uninstall cloudypilot"
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/settings/settings.py
@@ -258,15 +258,15 @@ msgid "Enable Tethering"
 msgstr "启用网络共享"
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Enable driver monitoring even when sunnypilot is not engaged."
+msgid "Enable driver monitoring even when cloudypilot is not engaged."
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Enable sunnypilot"
+msgid "Enable cloudypilot"
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "Enable the sunnypilot longitudinal control (alpha) toggle to allow Experimental mode."
+msgid "Enable the cloudypilot longitudinal control (alpha) toggle to allow Experimental mode."
 msgstr ""
 
 #: system/ui/widgets/network.py
@@ -574,7 +574,7 @@ msgid "Review Training Guide"
 msgstr "查看训练指南"
 
 #: openpilot/selfdrive/ui/layouts/settings/device.py
-msgid "Review the rules, features, and limitations of sunnypilot"
+msgid "Review the rules, features, and limitations of cloudypilot"
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/settings/software.py
@@ -702,11 +702,11 @@ msgid "Waiting to start"
 msgstr "等待开始"
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "Welcome to sunnypilot"
+msgid "Welcome to cloudypilot"
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "When enabled, pressing the accelerator pedal will disengage sunnypilot."
+msgid "When enabled, pressing the accelerator pedal will disengage cloudypilot."
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/sidebar.py
@@ -722,11 +722,11 @@ msgid "Wrong password"
 msgstr "密码错误"
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "You must accept the Terms of Service in order to use sunnypilot."
+msgid "You must accept the Terms of Service in order to use cloudypilot."
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/onboarding.py
-msgid "You must accept the Terms of Service to use sunnypilot. Read the latest terms at https://sunnypilot.ai/terms before continuing."
+msgid "You must accept the Terms of Service to use cloudypilot. Read the latest terms at https://sunnypilot.ai/terms before continuing."
 msgstr ""
 
 #: openpilot/selfdrive/ui/onroad/driver_camera_dialog.py
@@ -810,19 +810,19 @@ msgid "right"
 msgstr "右"
 
 #: openpilot/selfdrive/ui/layouts/settings/developer.py
-msgid "sunnypilot Longitudinal Control (Alpha)"
+msgid "cloudypilot Longitudinal Control (Alpha)"
 msgstr ""
 
 #: openpilot/selfdrive/ui/onroad/alert_renderer.py
-msgid "sunnypilot Unavailable"
+msgid "cloudypilot Unavailable"
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/settings/toggles.py
-msgid "sunnypilot longitudinal control may come in a future update."
+msgid "cloudypilot longitudinal control may come in a future update."
 msgstr ""
 
 #: openpilot/selfdrive/ui/layouts/settings/device.py
-msgid "sunnypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."
+msgid "cloudypilot requires the device to be mounted within 4° left or right and within 5° up or 9° down."
 msgstr ""
 
 #: system/ui/widgets/network.py

@@ -251,7 +251,7 @@ class SoftwareLayoutMici(NavScroller):
     def uninstall_openpilot_callback():
       ui_state.params.put_bool("DoUninstall", True, block=True)
 
-    uninstall_openpilot_btn = EngagedConfirmationButton("uninstall sunnypilot", "uninstall",
+    uninstall_openpilot_btn = EngagedConfirmationButton("uninstall cloudypilot", "uninstall",
                                                         gui_app.texture("icons_mici/settings/device/uninstall.png", 64, 64),
                                                         uninstall_openpilot_callback, exit_on_confirm=False,
                                                         description="Remove openpilot from this device.",

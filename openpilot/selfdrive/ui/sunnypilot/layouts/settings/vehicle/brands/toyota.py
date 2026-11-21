@@ -15,15 +15,15 @@ from opendbc.car.toyota.values import ToyotaFlags
 
 
 ONROAD_ONLY_DESCRIPTION = tr_noop("Start the vehicle to check vehicle compatibility.")
-SNG_HACK_UNAVAILABLE = tr_noop("sunnypilot Longitudinal Control must be available and enabled for your vehicle to use this feature.")
+SNG_HACK_UNAVAILABLE = tr_noop("cloudypilot Longitudinal Control must be available and enabled for your vehicle to use this feature.")
 PLATFORM_UNAVAILABLE = tr_noop("This feature is currently not available on this platform.")
 
 DESCRIPTIONS = {
   'enforce_stock_longitudinal': tr_noop(
-    'sunnypilot will not take over control of gas and brakes. Factory Toyota longitudinal control will be used.'
+    'cloudypilot will not take over control of gas and brakes. Factory Toyota longitudinal control will be used.'
   ),
   'stop_and_go_hack': tr_noop(
-    'sunnypilot will allow some Toyota/Lexus cars to auto resume during stop and go traffic. ' +
+    'cloudypilot will allow some Toyota/Lexus cars to auto resume during stop and go traffic. ' +
     'This feature is only applicable to certain models that are able to use longitudinal control. This is an alpha feature. Use at your own risk.'
   ),
   'tss2_smooth': tr_noop(
