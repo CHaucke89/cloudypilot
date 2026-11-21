@@ -86,7 +86,6 @@ class GreenButton(Button):
     self._label.set_text_color(BUTTON_TEXT)
 
 class SoftwareWidget(Widget):
-  """Branch selector beside instant update; Check gates Soft (fast-forward) vs Hard (force-pushed)."""
 
   def __init__(self):
     super().__init__()
