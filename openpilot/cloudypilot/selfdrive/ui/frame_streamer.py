@@ -1,0 +1,270 @@
+import io
+import struct
+import threading
+import time
+from multiprocessing import shared_memory as shm
+
+from PIL import Image
+import pyray as pr
+
+from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateReader
+from openpilot.cloudypilot.system.remote_ui.protocol import FORMAT_JPEG, FRAME_DATA_SIZE, HEADER_FMT, METADATA_SIZE, SHM_NAME, SHM_SIZE
+
+JPEG_QUALITY = 85
+FRAME_RATE_LIMIT = 10
+
+DISCONNECTED_FRAME_RATE_LIMIT = 1
+DISCONNECTED_JPEG_QUALITY = 60
+MIN_CONNECTED_FRAME_RATE_LIMIT = 4
+MAX_CONNECTED_FRAME_RATE_LIMIT = 10
+MIN_JPEG_QUALITY = 55
+MAX_JPEG_QUALITY = 90
+ADAPT_DECAY = 0.75
+ADAPT_RECOVER_S = 2.0
+ADAPT_HIGH_PRESSURE = 1.1
+ADAPT_LOW_PRESSURE = 0.6
+JPEG_SIZE_BUDGET_AT_10_FPS = 220_000
+SCALE_STEPS = (0.5,)
+MAX_BROWSER_UPSCALE = 1.33
+NETWORK_DELAY_BUDGET_MS = 250.0
+UNCHANGED_KEEPALIVE_S = 1.0
+
+
+class FrameStreamer:
+  def __init__(self):
+    self.last_capture_time = 0.0
+    self.frame_interval = 1.0 / FRAME_RATE_LIMIT
+    self.shm = None
+    self.client_state = ClientStateReader()
+    self.client_connected = False
+    self.target_frame_rate = FRAME_RATE_LIMIT
+    self.jpeg_quality = JPEG_QUALITY
+    self.encode_pressure_ewma = 0.0
+    self.last_adapt_time = 0.0
+    self._last_rgba = None
+    self._last_encode_key = None
+    self._last_header = None
+    self._last_publish_mono = 0.0
+    self._state_lock = threading.Lock()
+    self._init_shm()
+    self._pending = None
+    self._pending_cv = threading.Condition()
+    self._encoding = False
+    self._running = True
+    self._worker = threading.Thread(target=self._encode_loop, name="FrameStreamerEncoder", daemon=True)
+    self._worker.start()
+
+  def _set_frame_rate(self, frame_rate):
+    self.target_frame_rate = max(1, frame_rate)
+    self.frame_interval = 1.0 / float(self.target_frame_rate)
+
+  def _set_disconnected_mode(self):
+    self._set_frame_rate(DISCONNECTED_FRAME_RATE_LIMIT)
+    self.jpeg_quality = DISCONNECTED_JPEG_QUALITY
+    self.encode_pressure_ewma = 0.0
+
+  def _set_connected_defaults(self):
+    self._set_frame_rate(FRAME_RATE_LIMIT)
+    self.jpeg_quality = JPEG_QUALITY
+    self.encode_pressure_ewma = 0.0
+
+  def _poll_client_state(self):
+    connected = self.client_state.connected()
+    if connected == self.client_connected:
+      return
+
+    self.client_connected = connected
+    with self._state_lock:
+      if connected:
+        self._set_connected_defaults()
+      else:
+        self._set_disconnected_mode()
+
+  def _pick_scale(self, width):
+    requested = self.client_state.requested_width() if self.client_connected else 0
+    if requested <= 0:
+      return 1.0
+    for scale in SCALE_STEPS:
+      if width * scale * MAX_BROWSER_UPSCALE >= requested:
+        return scale
+    return 1.0
+
+  def _jpeg_size_budget(self):
+    return int(JPEG_SIZE_BUDGET_AT_10_FPS * (FRAME_RATE_LIMIT / float(self.target_frame_rate)))
+
+  def _update_adaptive_rate(self, now_mono, encode_ms, jpeg_size):
+    if not self.client_connected:
+      return
+
+    frame_budget_ms = 1000.0 / float(self.target_frame_rate)
+    encode_pressure = max(
+      encode_ms / max(frame_budget_ms, 1.0),
+      jpeg_size / max(float(self._jpeg_size_budget()), 1.0),
+      self.client_state.network_delay_ms() / NETWORK_DELAY_BUDGET_MS,
+    )
+    self.encode_pressure_ewma = (ADAPT_DECAY * self.encode_pressure_ewma) + ((1.0 - ADAPT_DECAY) * encode_pressure)
+    pressure = self.encode_pressure_ewma
+
+    if pressure > ADAPT_HIGH_PRESSURE and (now_mono - self.last_adapt_time) >= 0.5:
+      if self.jpeg_quality > MIN_JPEG_QUALITY:
+        self.jpeg_quality = max(MIN_JPEG_QUALITY, self.jpeg_quality - 5)
+      elif self.target_frame_rate > MIN_CONNECTED_FRAME_RATE_LIMIT:
+        self._set_frame_rate(self.target_frame_rate - 1)
+      self.last_adapt_time = now_mono
+    elif pressure < ADAPT_LOW_PRESSURE and (now_mono - self.last_adapt_time) >= ADAPT_RECOVER_S:
+      if self.target_frame_rate < MAX_CONNECTED_FRAME_RATE_LIMIT:
+        self._set_frame_rate(self.target_frame_rate + 1)
+      elif self.jpeg_quality < MAX_JPEG_QUALITY:
+        self.jpeg_quality = min(MAX_JPEG_QUALITY, self.jpeg_quality + 2)
+      self.last_adapt_time = now_mono
+
+  def _init_shm(self):
+    # create=True fails if a previous UI run left the segment behind.
+    try:
+      stale = shm.SharedMemory(name=SHM_NAME)
+      stale.close()
+      stale.unlink()
+    except FileNotFoundError:
+      pass
+    except Exception as e:
+      print(f"FrameStreamer: could not clear stale shm: {e}")
+
+    try:
+      self.shm = shm.SharedMemory(name=SHM_NAME, create=True, size=SHM_SIZE)
+      # Zero the header so a reader never sees a stale ready flag.
+      buf = self.shm.buf
+      assert buf is not None
+      buf[0:METADATA_SIZE] = b"\x00" * METADATA_SIZE
+      print(f"FrameStreamer: shared memory ready ({SHM_SIZE} bytes)")
+    except Exception as e:
+      print(f"FrameStreamer: failed to init shared memory: {e}")
+      self.shm = None
+
+  def stream_frame(self):
+    """Call on the render thread before end_drawing swaps the buffers."""
+    if self.shm is None:
+      return
+
+    now_mono = time.monotonic()
+    self._poll_client_state()
+    if (now_mono - self.last_capture_time) < self.frame_interval:
+      return
+    with self._pending_cv:
+      if self._encoding or self._pending is not None:
+        return
+    self.last_capture_time = now_mono
+
+    flush_batch = getattr(pr, "rl_draw_render_batch_active", None)
+    if callable(flush_batch):
+      flush_batch()
+
+    rl_image = pr.load_image_from_screen()
+    capture_ms = int(time.clock_gettime(time.CLOCK_REALTIME) * 1000)
+    with self._pending_cv:
+      self._pending = (rl_image, capture_ms, now_mono)
+      self._pending_cv.notify()
+
+  def _encode_loop(self):
+    while True:
+      with self._pending_cv:
+        while self._running and self._pending is None:
+          self._pending_cv.wait()
+        if not self._running:
+          return
+        job = self._pending
+        assert job is not None
+        self._pending = None
+        self._encoding = True
+      try:
+        self._encode(*job)
+      finally:
+        with self._pending_cv:
+          self._encoding = False
+
+  def _encode(self, rl_image, capture_ms, capture_mono):
+    try:
+      encode_start = time.monotonic()
+      width = rl_image.width
+      height = rl_image.height
+      if not width or not height:
+        return
+
+      data_size = width * height * 4
+      if data_size <= 0:
+        return
+
+      # Static screens repeat for seconds at a time. The compare exits at the first differing byte, so it's cheap.
+      frame = pr.ffi.buffer(rl_image.data, data_size)
+      scale = self._pick_scale(width)
+      encode_key = (width, height, scale, self.jpeg_quality)
+      if encode_key == self._last_encode_key and frame == self._last_rgba:
+        if capture_mono - self._last_publish_mono >= UNCHANGED_KEEPALIVE_S:
+          self._republish_last(capture_ms, capture_mono)
+        return
+      # Keep a copy to compare against, since raylib's buffer is freed below.
+      rgba = bytes(frame)
+
+      pil_img = Image.frombytes("RGB", (width, height), rgba, "raw", "RGBX")
+      if scale != 1.0:
+        pil_img = pil_img.reduce(round(1 / scale))
+
+      with io.BytesIO() as out:
+        pil_img.save(out, format="JPEG", quality=self.jpeg_quality)
+        jpeg = out.getvalue()
+      encode_ms = (time.monotonic() - encode_start) * 1000.0
+
+      if len(jpeg) > FRAME_DATA_SIZE:
+        print(f"FrameStreamer: frame too large ({len(jpeg)} bytes), dropping")
+        return
+
+      shm_buf = self.shm.buf if self.shm is not None else None
+      if shm_buf is None:
+        return
+
+      shm_buf[METADATA_SIZE : METADATA_SIZE + len(jpeg)] = jpeg
+      self._last_header = (
+        pil_img.width,
+        pil_img.height,
+        len(jpeg),
+        FORMAT_JPEG,
+        1,
+        width,
+        height,
+      )
+      shm_buf[0:METADATA_SIZE] = struct.pack(HEADER_FMT, capture_ms, *self._last_header)
+      self._last_publish_mono = capture_mono
+      self._last_rgba = rgba
+      self._last_encode_key = encode_key
+      with self._state_lock:
+        self._update_adaptive_rate(capture_mono, encode_ms, len(jpeg))
+    except Exception as e:
+      print(f"FrameStreamer error: {e}")
+    finally:
+      pr.unload_image(rl_image)
+
+  def _republish_last(self, capture_ms, capture_mono):
+    """Re-announce the JPEG already in shm by rewriting only the header."""
+    shm_buf = self.shm.buf if self.shm is not None else None
+    if shm_buf is None or self._last_header is None:
+      return
+    shm_buf[0:METADATA_SIZE] = struct.pack(HEADER_FMT, capture_ms, *self._last_header)
+    self._last_publish_mono = capture_mono
+
+  def close(self):
+    # Stop the encoder before unmapping shm so it can't write into a closed segment.
+    with self._pending_cv:
+      self._running = False
+      job, self._pending = self._pending, None
+      self._pending_cv.notify()
+    self._worker.join(timeout=2.0)
+    if job is not None:
+      pr.unload_image(job[0])
+
+    self.client_state.close()
+    if self.shm is not None:
+      try:
+        self.shm.close()
+        self.shm.unlink()
+      except Exception:
+        pass
+      self.shm = None
