@@ -42,11 +42,6 @@ class ToggleActionSP(ToggleAction):
     ToggleAction.__init__(self, initial_state, width, enabled, callback)
     self.toggle = ToggleSP(initial_state=initial_state, callback=callback, param=param)
 
-  def show_event(self):
-    super().show_event()
-    # the param can change elsewhere (e.g. home quick toggles) while this panel is hidden
-    self.toggle.refresh()
-
 
 class ButtonSP(Button):
   def _update_state(self):
@@ -223,12 +218,6 @@ class ListItemSP(ListItem):
     self._right_value_source: str | Callable[[], str] | None = None
     self._right_value_font = gui_app.font(FontWeight.NORMAL)
     self._right_value_color: rl.Color = style.ITEM_TEXT_VALUE_COLOR
-
-  def show_event(self):
-    super().show_event()
-    # stock ListItem doesn't register its action as a child, so it never sees show_event
-    if self.action_item:
-      self.action_item.show_event()
 
   def set_title(self, title: str | Callable[[], str] = ""):
     self._title = title
@@ -422,3 +411,7 @@ class LineSeparatorSP(LineSeparator):
     rl.draw_line(int(self._rect.x) + LINE_PADDING, line_y,
                  int(self._rect.x + self._rect.width) - LINE_PADDING, line_y,
                  LINE_COLOR)
+
+
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.widgets.toggle_item import toggle_item_cp as toggle_item_sp  # noqa: F401

@@ -26,11 +26,6 @@ class ToggleSP(Toggle):
       initial_state = self.params.get_bool(self.param_key)
     Toggle.__init__(self, initial_state, callback)
 
-  def refresh(self):
-    if self.param_key:
-      self.set_state(self.params.get_bool(self.param_key))
-      self._progress = self._target
-
   def set_rect(self, rect: rl.Rectangle):
     self._rect = rl.Rectangle(rect.x, rect.y, style.TOGGLE_WIDTH, style.TOGGLE_HEIGHT)
 
