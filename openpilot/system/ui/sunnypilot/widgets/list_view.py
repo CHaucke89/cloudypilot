@@ -411,3 +411,7 @@ class LineSeparatorSP(LineSeparator):
     rl.draw_line(int(self._rect.x) + LINE_PADDING, line_y,
                  int(self._rect.x + self._rect.width) - LINE_PADDING, line_y,
                  LINE_COLOR)
+
+
+if gui_app.cloudypilot_ui():
+  from openpilot.system.ui.cloudypilot.widgets.toggle_item import toggle_item_cp as toggle_item_sp  # noqa: F401
