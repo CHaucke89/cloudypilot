@@ -31,15 +31,25 @@ cloudypilot's master branch can be installed using the following URL: `installer
 
 - Add a **Soft Reboot** button to the Device panel and support `sudo systemctl restart comma` without triggering the hardware-reset prompt. Standard hardware reboot behavior is preserved.
 - Reset configurable options to their defaults by tapping the current value.
-- Show the active model, current branch, and Always Offroad Mode controls on the home screen.
-- Update to the latest commit on the current branch straight from the home screen with the **Instant Update** card. **Soft Update** pulls the latest changes and soft reboots; **Hard Update** fetches and hard-resets to the remote branch before rebooting.
-- Customize the sidebar from the new **Personalize** settings panel (more info below).
+- Rework the home screen into cards for the active model, software updates, device power controls, and quick toggles (more info below).
+- Customize and reorder the sidebar from the new **Personalize** settings panel (more info below).
 - Stream and interact with the device remotely with the built-in Remote UI streamer (more info below).
 - Include additional user-interface changes.
 
+## Home screen
+
+The home screen is split into four cards:
+
+- **Active Model** shows the current driving model, with a shortcut to the Models panel.
+- **Software** shows the current branch, with a shortcut to the Software panel, and an **Instant Update** row. **Check** fetches the remote and enables **Soft Update** if the branch can fast-forward, or **Hard Update** if it was force-pushed. **Soft Update** pulls the latest changes and soft reboots; **Hard Update** hard-resets to the remote branch before rebooting.
+- **Device** holds Always Offroad Mode plus **Soft Reboot**, **Reboot**, and **Power Off** buttons.
+- **Quick Toggles** turns cloudypilot, Remote UI, and ICBM (Intelligent Cruise Button Management, when the car supports it) on or off without opening Settings.
+
+Until the device is paired, the pairing prompt takes the place of the Device and Quick Toggles cards.
+
 ## Personalize the sidebar
 
-The **Personalize** panel in Settings controls which status tiles appear in the sidebar. The network indicator can be shown or hidden, and up to four of the following tiles can be enabled at once:
+The **Personalize** panel in Settings controls which status tiles appear in the sidebar. The network indicator can be shown or hidden, and can show the device's IP address in place of "Wi-Fi" when connected to Wi-Fi. Up to four of the following tiles can be enabled at once:
 
 - **Temperature**, shown as GOOD/HIGH or, optionally, in degrees
 - **Vehicle** (panda connection)
@@ -54,9 +64,11 @@ The **Personalize** panel in Settings controls which status tiles appear in the 
 
 Once four tiles are on, the rest are disabled until one is turned off.
 
+To reorder the tiles, hold one for half a second while parked until it lifts, then drag it to a new spot. The order is saved, and hidden tiles keep their place for when they're turned back on.
+
 ## Remote UI Stream
 
-cloudypilot incorporates the [raylib implementation of the openpilot remote UI streamer](https://github.com/CHaucke89/op-remote-ui). The server is controlled by the `Remote UI` toggle in Developer settings
+cloudypilot incorporates the [raylib implementation of the openpilot remote UI streamer](https://github.com/CHaucke89/op-remote-ui). The server is controlled by the `Remote UI` toggle in Developer settings or the Quick Toggles card on the home screen,
 and runs alongside the other openpilot/sunnypilot/cloudypilot processes. Verify it's running by connecting to the device through SSH and attaching to the comma tmux session with `tmux a`.
 
 Make sure you're connected to the same Wifi network as the device and head to `http://<device-ip>:8081` in your browser to view and interact with the comma device remotely. Its output appears in the comma tmux session along with the other processes.
@@ -120,6 +132,7 @@ If you find a feature that would be useful upstream in sunnypilot, open an issue
 
 - Git LFS files are hosted on a self-hosted Gitea mirror instead of GitHub. `tools/op.sh setup` pulls them with `tools/lfs_pull.sh`, which falls back to GitHub for anything the mirror doesn't have. Run that script instead of `git lfs pull` when pulling LFS files manually.
 - Non-draft pull requests are reviewed automatically by Claude, and mentioning `@claude` in an issue or PR comment (write access required) asks it to respond or make changes.
+- In Claude Code, `/pr-as-claude [branch] [base]` opens a draft PR authored by `claude[bot]` through the `open-pr` job in `.github/workflows/claude.yaml`. All other PRs open under your own account.
 
 ## Related documentation
 
