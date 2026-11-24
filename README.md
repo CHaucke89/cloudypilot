@@ -132,7 +132,6 @@ If you find a feature that would be useful upstream in sunnypilot, open an issue
 
 - Git LFS files are hosted on a self-hosted Gitea mirror instead of GitHub. `tools/op.sh setup` pulls them with `tools/lfs_pull.sh`, which falls back to GitHub for anything the mirror doesn't have. Run that script instead of `git lfs pull` when pulling LFS files manually.
 - Non-draft pull requests are reviewed automatically by Claude, and mentioning `@claude` in an issue or PR comment (write access required) asks it to respond or make changes.
-- In Claude Code, `/pr-as-claude [branch] [base]` opens a draft PR authored by `claude[bot]` through the `open-pr` job in `.github/workflows/claude.yaml`. All other PRs open under your own account.
 
 ## Related documentation
 
