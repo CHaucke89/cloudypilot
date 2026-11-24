@@ -20,6 +20,17 @@ on:
         required: false
         type: boolean
         default: false
+      runner:
+        description: 'Where to build: auto picks GitHub when the GPU-compiled models can be reused, else the comma device'
+        required: false
+        type: choice
+        options: [ auto, github, device ]
+        default: auto
+      publish:
+        description: 'Publish the build to the prebuilt branch'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   prepare_strategy:
@@ -33,6 +44,7 @@ jobs:
       dm_onnx_sha256: ${{ steps.models.outputs.dm_onnx_sha256 }}
       tinygrad_ref: ${{ steps.models.outputs.tinygrad_ref }}
       use_hf_model: ${{ steps.models.outputs.use_hf_model }}
+      runner: ${{ steps.runner.outputs.runner }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -86,6 +98,58 @@ jobs:
             echo "use_hf_model=false" >> $GITHUB_OUTPUT
           fi
 
+      # The driving warps are compiled on the device's GPU too, and HF doesn't have them. They only depend
+      # on tinygrad and the warp inputs below, so take them from the last prebuilt built from the same ones.
+      - name: Check for reusable driving warps
+        id: warps
+        run: |
+          WARP_INPUTS="tinygrad_repo openpilot/selfdrive/modeld/SConscript openpilot/system/camerad/cameras/nv12_info.py openpilot/common/transformations"
+          warp_key() { for p in $WARP_INPUTS; do git rev-parse "$1:$p"; done | sha256sum | cut -d' ' -f1; }
+          HEAD_KEY=$(warp_key HEAD)
+
+          for PREBUILT in $(printf '%s\n' "${{ steps.strategy.outputs.new_branch }}" master-prebuilt | uniq); do
+            git fetch --depth 1 --filter=blob:none origin "$PREBUILT" || continue
+            PREBUILT_SHA=$(git rev-parse FETCH_HEAD)
+            SRC=$(git log -1 --format=%B "$PREBUILT_SHA" | sed -n 's/^master commit: //p')
+            [ -n "$SRC" ] && git fetch --depth 1 --filter=blob:none origin "$SRC" || continue
+            if [ "$(warp_key "$SRC")" != "$HEAD_KEY" ]; then
+              echo "$PREBUILT was built from $SRC, whose warp inputs differ"
+              continue
+            fi
+            mkdir -p driving-warps
+            for size in 1344x760 1928x1208; do
+              git show "$PREBUILT_SHA:openpilot/selfdrive/modeld/models/driving_warp_${size}_tinygrad.pkl" > "driving-warps/driving_warp_${size}_tinygrad.pkl"
+            done
+            echo "Reusing driving warps from $PREBUILT ($PREBUILT_SHA, built from $SRC)"
+            echo "reuse=true" >> $GITHUB_OUTPUT
+            exit 0
+          done
+          echo "No prebuilt with matching driving warps"
+          echo "reuse=false" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        if: steps.warps.outputs.reuse == 'true'
+        with:
+          name: driving-warps
+          path: driving-warps/
+
+      - name: Pick build runner
+        id: runner
+        run: |
+          RUNNER="${{ inputs.runner || 'auto' }}"
+          CAN_USE_GITHUB=false
+          if [[ "${{ steps.models.outputs.use_hf_model }}" == "true" && "${{ steps.warps.outputs.reuse }}" == "true" ]]; then
+            CAN_USE_GITHUB=true
+          fi
+          if [[ "$RUNNER" == "auto" ]]; then
+            RUNNER=$([[ "$CAN_USE_GITHUB" == "true" ]] && echo github || echo device)
+          elif [[ "$RUNNER" == "github" && "$CAN_USE_GITHUB" != "true" ]]; then
+            echo "::error::GitHub builds need the models on HF and reusable driving warps, so this tree has to be built on the device"
+            exit 1
+          fi
+          echo "Building on $RUNNER"
+          echo "runner=$RUNNER" >> $GITHUB_OUTPUT
+
   validate_tests:
     runs-on: ubuntu-24.04
     needs: [ prepare_strategy ]
@@ -110,6 +174,7 @@ jobs:
     if: ${{
       (always() && !cancelled() && !failure()) &&
       needs.prepare_strategy.result == 'success' &&
+      needs.prepare_strategy.outputs.runner == 'device' &&
       (needs.validate_tests.result == 'success' || needs.validate_tests.result == 'skipped')
       }}
     env:
@@ -199,22 +264,7 @@ jobs:
           fi
 
       - name: Strip release tree
-        run: |
-          cd $BUILD_DIR
-          find . -name '*.a' -delete
-          find . -name '*.o' -delete
-          find . -name '*.os' -delete
-          find . -name '*.pyc' -delete
-          find . -name 'moc_*' -delete
-          find . -name '__pycache__' -type d -exec rm -rf {} +
-          find . -name 'SConstruct' -delete
-          find . -name 'SConscript' -delete
-          rm -rf .sconsign.dblite Jenkinsfile tools/release/ release/
-          rm -f openpilot/selfdrive/modeld/models/*.onnx*
-          rm -f openpilot/sunnypilot/modeld*/models/*.onnx*
-          find openpilot/third_party/ -name '*x86*' -exec rm -r {} +
-          find openpilot/third_party/ -name '*Darwin*' -exec rm -r {} +
-          cd -
+        run: release/ci/strip_prebuilt.sh "$BUILD_DIR"
 
       - name: 'Tar.gz files'
         run: |
@@ -236,16 +286,116 @@ jobs:
           source ${UV_PROJECT_ENVIRONMENT}/bin/activate
           PYTHONPATH=${{ github.workspace }}:$PYTHONPATH ${{ github.workspace }}/scripts/manage-powersave.py --enable
 
+  # Same build as the device job, in a chroot of the AGNOS image on an arm64 runner. Only the
+  # GPU-compiled models differ: they come from HF and the last prebuilt (see prepare_strategy).
+  build_github:
+    needs: [ validate_tests, prepare_strategy ]
+    concurrency:
+      group: build-${{ github.ref_name }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04-arm
+    if: ${{
+      (always() && !cancelled() && !failure()) &&
+      needs.prepare_strategy.result == 'success' &&
+      needs.prepare_strategy.outputs.runner == 'github' &&
+      (needs.validate_tests.result == 'success' || needs.validate_tests.result == 'skipped')
+      }}
+    env:
+      AGNOS_ROOT: /mnt/agnos
+      CI_ROOT: /data/cloudypilot-ci
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
+          # the commit prepare_strategy matched the models and warps against
+          ref: ${{ github.sha }}
+      - run: tools/lfs_pull.sh --exclude="openpilot/selfdrive/modeld/models/big_*"
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+
+      - name: Set up AGNOS chroot
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q android-sdk-libsparse-utils
+          sudo mkdir -p "$BUILD_DIR" "$CI_ROOT/scons_cache"
+          sudo chown -R "$(id -u):$(id -g)" "$BUILD_DIR" "$CI_ROOT"
+          sudo AGNOS_WORK_DIR="$RUNNER_TEMP/agnos" release/ci/agnos_chroot.sh "$AGNOS_ROOT" "$GITHUB_WORKSPACE" "$BUILD_DIR" "$CI_ROOT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: driving-warps
+          path: ${{ env.CI_ROOT }}/driving-warps
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.CI_ROOT }}/scons_cache
+          key: scons-agnos-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            scons-agnos-${{ github.ref_name }}-
+            scons-agnos-
+
+      - name: Build Main Project
+        run: |
+          ./tools/release/release_files.py | xargs -0 cp -pR --parents -t "$BUILD_DIR" --
+
+          # compile_warp.py needs the device's GPU, so stand in for it with the reused warps
+          WARP_COMPILER="$BUILD_DIR/tinygrad_repo/examples/openpilot/compile_warp.py"
+          mv "$WARP_COMPILER" "$WARP_COMPILER.orig"
+          cat > "$WARP_COMPILER" <<EOF
+          import os, shutil, sys
+          out = sys.argv[sys.argv.index('--output') + 1]
+          shutil.copyfile(os.path.join('$CI_ROOT/driving-warps', os.path.basename(out)), out)
+          EOF
+
+          # /usr/local/venv is AGNOS's own venv path, so RUNPATHs into it (e.g. ffmpeg) resolve on any device
+          sudo chroot "$AGNOS_ROOT" /usr/bin/env -i \
+            HOME=/root PATH=/usr/local/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+            CI=1 SKIP_TINYGRAD_COMPILE=1 \
+            WORKSPACE="$GITHUB_WORKSPACE" BUILD_DIR="$BUILD_DIR" CI_ROOT="$CI_ROOT" \
+            UV_PROJECT_ENVIRONMENT=/usr/local/venv UV_PYTHON_PREFERENCE=managed UV_PYTHON_DOWNLOADS=automatic \
+            UV_PYTHON_INSTALL_DIR="$CI_ROOT/uv/python" UV_CACHE_DIR="$CI_ROOT/uv/cache" \
+            GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0='*' \
+            /bin/bash -euo pipefail -c '
+              cd "$WORKSPACE"
+              /usr/bin/uv sync --frozen --extra tools
+              export PYTHONPATH="$BUILD_DIR:$BUILD_DIR/msgq_repo:$BUILD_DIR/opendbc_repo:$BUILD_DIR/rednose_repo:$BUILD_DIR/teleoprtc_repo:$BUILD_DIR/tinygrad_repo"
+              cd "$BUILD_DIR"
+              /usr/bin/time -v scons -j$(nproc) cache_dir="$CI_ROOT/scons_cache" --minimal
+              touch prebuilt
+            '
+
+          sudo chown -R "$(id -u):$(id -g)" "$BUILD_DIR" "$CI_ROOT"
+          mv "$WARP_COMPILER.orig" "$WARP_COMPILER"
+          cmp "$CI_ROOT/driving-warps/driving_warp_1928x1208_tinygrad.pkl" "$BUILD_DIR/openpilot/selfdrive/modeld/models/driving_warp_1928x1208_tinygrad.pkl"
+
+      - name: Strip release tree
+        run: release/ci/strip_prebuilt.sh "$BUILD_DIR"
+
+      - name: 'Tar.gz files'
+        run: |
+          tar czf prebuilt.tar.gz -C ${{ env.BUILD_DIR }} .
+          ls -la prebuilt.tar.gz
+
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilt
+          path: prebuilt.tar.gz
+          compression-level: 0
+
   publish:
     concurrency:
       group: publish-${{ github.ref_name }}
       cancel-in-progress: true
     if: ${{
       always() && !cancelled() &&
-      needs.build.result == 'success' &&
-      needs.prepare_strategy.result == 'success'
+      (needs.build.result == 'success' || needs.build_github.result == 'success') &&
+      needs.prepare_strategy.result == 'success' &&
+      (github.event_name != 'workflow_dispatch' || inputs.publish)
       }}
-    needs: [ build, prepare_strategy ]
+    needs: [ build, build_github, prepare_strategy ]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
