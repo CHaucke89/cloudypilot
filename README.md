@@ -6,6 +6,10 @@ cloudypilot is a personal fork of [sunnypilot](https://github.com/sunnypilot/sun
 
 > **This is a potentially unsafe fork.** cloudypilot is not affiliated with, endorsed by, or supported by sunnypilot, comma.ai, or the openpilot developers.
 
+<img width="720" alt="cloudypilot home screen" src="docs/screenshots/home.webp" />
+
+*The home screen: active model, instant updates, device power controls, and quick toggles.*
+
 ## Safety first
 
 cloudypilot includes changes to safety-critical code, including steering-angle limits. While this does not explicitly break any of comma's rules, tread carefully if using this fork and uploading to comma connect. Driver-monitoring and longitudinal-engagement safety code have not been intentionally weakened or removed.
@@ -64,6 +68,10 @@ The **Personalize** panel in Settings controls which status tiles appear in the 
 
 Once four tiles are on, the rest are disabled until one is turned off.
 
+<img width="360" alt="Three sidebar tile layouts" src="docs/screenshots/sidebar-tiles.webp" />
+
+*Pick any four tiles and arrange them however you like.*
+
 To reorder the tiles, hold one for half a second while parked until it lifts, then drag it to a new spot. The order is saved, and hidden tiles keep their place for when they're turned back on.
 
 ## Remote UI Stream
@@ -72,6 +80,10 @@ cloudypilot incorporates the [raylib implementation of the openpilot remote UI s
 and runs alongside the other openpilot/sunnypilot/cloudypilot processes. Verify it's running by connecting to the device through SSH and attaching to the comma tmux session with `tmux a`.
 
 Make sure you're connected to the same Wifi network as the device and head to `http://<device-ip>:8081` in your browser to view and interact with the comma device remotely. Its output appears in the comma tmux session along with the other processes.
+
+<img width="640" alt="Remote UI on a phone" src="docs/screenshots/remote-ui.webp" />
+
+*Change settings from your phone with Remote UI.*
 
 You can see how many remote clients are connected by enabling the Remote UI toggle in the Personalize panel to add an icon to the sidebar with total connected clients.
 
