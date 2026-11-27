@@ -47,7 +47,7 @@ class PersonalizeLayout(Widget):
     )
 
     reorder = ListItemSP(
-      title=lambda: tr("Reorder Sidebar Tiles"),
+      title=lambda: tr("> Reorder Sidebar Tiles <"),
       description=lambda: tr("While parked, hold a sidebar tile for half a second until it lifts, then drag it to a new spot."),
     )
 
@@ -81,7 +81,7 @@ class PersonalizeLayout(Widget):
       quick_toggles.add(qt.show_param, lambda qt=qt: tr("Quick Toggle: {}").format(qt.label()),
                         lambda qt=qt: tr("Show {} on the home screen's Quick Toggles card.").format(qt.name()))
 
-    return [network, network_ip, reorder, temp, temp_degrees, *tiles.items[1:], *quick_toggles.items]
+    return [reorder, network, network_ip, temp, temp_degrees, *tiles.items[1:], *quick_toggles.items]
 
   def _render(self, rect):
     self._scroller.render(rect)
