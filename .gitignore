@@ -97,10 +97,12 @@ build/
 # agents
 .claude/*
 !.claude/commands/
+!.claude/skills/
 .context/
 PLAN.md
 TASK.md
 SKILL.md
+!.claude/skills/*/SKILL.md
 
 ### JetBrains ###
 !.idea/customTargets.xml
