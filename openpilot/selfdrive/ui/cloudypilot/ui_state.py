@@ -1,5 +1,11 @@
 from openpilot.cloudypilot.system.remote_ui.client_state import ClientStateReader
 
+QUICK_TOGGLE_SHOW_PARAMS = (
+  "QuickToggleShowCloudypilot", "QuickToggleShowRemoteUI", "QuickToggleShowICBM", "QuickToggleShowMads",
+  "QuickToggleShowSCCVision", "QuickToggleShowSCCMap", "QuickToggleShowDisengageOnGas", "QuickToggleShowLDW",
+  "QuickToggleShowAlwaysOnDM", "QuickToggleShowRecordFront", "QuickToggleShowRecordAudio", "QuickToggleShowMetric",
+)
+
 
 class UIStateCP:
   def __init__(self):
@@ -20,6 +26,7 @@ class UIStateCP:
     self.sidebar_show_load: bool = False
     self.sidebar_temp_degrees: bool = False
     self.sidebar_tile_order: list[str] = []
+    self.quick_toggles_shown: set[str] = {"QuickToggleShowCloudypilot", "QuickToggleShowRemoteUI", "QuickToggleShowICBM"}
     self.shutdown_voltage: float = 11.8
     self._remote_ui_client_state = ClientStateReader()
 
@@ -50,4 +57,5 @@ class UIStateCP:
     self.sidebar_temp_degrees = self.params.get_bool("SidebarTempDegrees")
     tile_order = self.params.get("SidebarTileOrder")
     self.sidebar_tile_order = tile_order if isinstance(tile_order, list) else []
+    self.quick_toggles_shown = {param for param in QUICK_TOGGLE_SHOW_PARAMS if self.params.get_bool(param)}
     self.shutdown_voltage = self.params.get("CustomShutdownVoltage", return_default=True)

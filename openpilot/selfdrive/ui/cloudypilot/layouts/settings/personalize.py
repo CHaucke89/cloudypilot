@@ -1,15 +1,35 @@
+from collections.abc import Callable
 from openpilot.selfdrive.ui.cloudypilot.layouts.sidebar import MAX_TILES
+from openpilot.selfdrive.ui.cloudypilot.widgets.quick_toggles import MAX_QUICK_TOGGLES, QUICK_TOGGLES
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.sunnypilot.widgets.list_view import ListItemSP, toggle_item_sp
 from openpilot.system.ui.widgets import Widget
 from openpilot.system.ui.widgets.scroller_tici import Scroller
 
 
+class CappedToggleGroup:
+  def __init__(self, cap: int, cap_desc: Callable[[], str]):
+    self._cap = cap
+    self._cap_desc = cap_desc
+    self.items: list[ListItemSP] = []
+
+  def add(self, param: str, title: Callable[[], str], desc: Callable[[], str]) -> ListItemSP:
+    item = toggle_item_sp(title=title, description=desc, param=param)
+    # Set after construction since both callbacks need the item itself
+    item.set_description(lambda: desc() if self._can_toggle(item) else desc() + "<br>" + self._cap_desc())
+    item.action_item.set_enabled(lambda: self._can_toggle(item))
+    self.items.append(item)
+    return item
+
+  def _can_toggle(self, item: ListItemSP) -> bool:
+    # Items that are on stay enabled so they can always be turned off
+    return item.action_item.get_state() or sum(i.action_item.get_state() for i in self.items) < self._cap
+
+
 class PersonalizeLayout(Widget):
   def __init__(self):
     super().__init__()
 
-    self._tile_items = []
     items = self._initialize_items()
     self._scroller = Scroller(items, line_separator=True, spacing=0)
 
@@ -31,6 +51,7 @@ class PersonalizeLayout(Widget):
       description=lambda: tr("While parked, hold a sidebar tile for half a second until it lifts, then drag it to a new spot."),
     )
 
+    tiles = CappedToggleGroup(MAX_TILES, lambda: tr("The sidebar fits {} tiles. Turn one off to show this one.").format(MAX_TILES))
     tile_toggles = [
       ("SidebarShowTemp", lambda: tr("Sidebar: Temperature"), lambda: tr("Show the device temperature status in the sidebar.")),
       ("SidebarShowVehicle", lambda: tr("Sidebar: Vehicle"), lambda: tr("Show the vehicle (panda) connection status in the sidebar.")),
@@ -43,9 +64,10 @@ class PersonalizeLayout(Widget):
       ("SidebarShowUpdate", lambda: tr("Sidebar: Update"), lambda: tr("Show the software update status in the sidebar.")),
       ("SidebarShowLoad", lambda: tr("Sidebar: System Load"), lambda: tr("Show the CPU and memory usage in the sidebar.")),
     ]
-    self._tile_items = [self._tile_item(param, title, desc) for param, title, desc in tile_toggles]
+    for param, title, desc in tile_toggles:
+      tiles.add(param, title, desc)
 
-    temp = self._tile_items[0]
+    temp = tiles.items[0]
     temp_degrees = toggle_item_sp(
       title=lambda: tr("Sidebar: Temperature in Degrees"),
       description=lambda: tr("Show the device temperature in degrees instead of GOOD or HIGH."),
@@ -53,26 +75,13 @@ class PersonalizeLayout(Widget):
       enabled=lambda: temp.action_item.get_state(),
     )
 
-    return [network, network_ip, reorder, temp, temp_degrees, *self._tile_items[1:]]
+    quick_toggles = CappedToggleGroup(MAX_QUICK_TOGGLES, lambda: tr("The Quick Toggles card fits {} toggles. Turn one off to show this one.")
+                                      .format(MAX_QUICK_TOGGLES))
+    for qt in QUICK_TOGGLES:
+      quick_toggles.add(qt.show_param, lambda qt=qt: tr("Quick Toggle: {}").format(qt.label()),
+                        lambda qt=qt: tr("Show {} on the home screen's Quick Toggles card.").format(qt.name()))
 
-  def _tile_item(self, param, title, desc):
-    item = toggle_item_sp(title=title, description=desc, param=param)
-    # Set after construction since both callbacks need the item itself
-    item.set_description(lambda: self._tile_description(item, desc))
-    item.action_item.set_enabled(lambda: self._can_toggle(item))
-    return item
-
-  def _total_tiles_on(self) -> int:
-    return sum(item.action_item.get_state() for item in self._tile_items)
-
-  def _can_toggle(self, item) -> bool:
-    # Tiles that are on stay enabled so they can always be turned off
-    return item.action_item.get_state() or self._total_tiles_on() < MAX_TILES
-
-  def _tile_description(self, item, desc) -> str:
-    if self._can_toggle(item):
-      return desc()
-    return desc() + "<br>" + tr("The sidebar fits {} tiles. Turn one off to show this one.").format(MAX_TILES)
+    return [network, network_ip, reorder, temp, temp_degrees, *tiles.items[1:], *quick_toggles.items]
 
   def _render(self, rect):
     self._scroller.render(rect)

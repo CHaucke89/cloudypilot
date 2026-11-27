@@ -35,7 +35,7 @@ cloudypilot's master branch can be installed using the following URL: `installer
 - Add a **Soft Reboot** button to the Device panel and support `sudo systemctl restart comma` without triggering the hardware-reset prompt. Standard hardware reboot behavior is preserved.
 - Reset configurable options to their defaults by tapping the current value.
 - Rework the home screen into cards for the active model, software updates, device power controls, and quick toggles (more info below).
-- Customize and reorder the sidebar from the new **Personalize** settings panel (more info below).
+- Customize and reorder the sidebar, and choose the home screen quick toggles, from the new **Personalize** settings panel (more info below).
 - Stream and interact with the device remotely with the built-in Remote UI streamer (more info below).
 
 ## Home screen
@@ -45,11 +45,11 @@ The home screen is split into four cards:
 - **Active Model** shows the current driving model, with a shortcut to the Models panel.
 - **Software** shows the current branch, with a shortcut to the Software panel, and an **Instant Update** row. **Check** fetches the remote and enables **Soft Update** if the branch can fast-forward, or **Hard Update** if it was force-pushed. **Soft Update** pulls the latest changes and soft reboots; **Hard Update** hard-resets to the remote branch before rebooting.
 - **Device** holds Always Offroad Mode plus **Soft Reboot**, **Reboot**, and **Power Off** buttons.
-- **Quick Toggles** turns cloudypilot, Remote UI, and ICBM (Intelligent Cruise Button Management, when the car supports it) on or off without opening Settings.
+- **Quick Toggles** turns up to three settings on or off without opening Settings. It shows Enable cloudypilot, Remote UI, and ICBM (Intelligent Cruise Button Management, when the car supports it) by default, and which toggles appear can be changed in the **Personalize** panel (more info below).
 
 Until the device is paired, the pairing prompt takes the place of the Device and Quick Toggles cards.
 
-## Personalize the sidebar
+## Personalize the sidebar and quick toggles
 
 The **Personalize** panel in Settings controls which status tiles appear in the sidebar. The network indicator can be shown or hidden, and can show the device's IP address in place of "Wi-Fi" when connected to Wi-Fi. Up to four of the following tiles can be enabled at once:
 
@@ -71,6 +71,24 @@ Once four tiles are on, the rest are disabled until one is turned off.
 *Pick any four tiles and arrange them however you like.*
 
 To reorder the tiles, hold one for half a second while parked until it lifts, then drag it to a new spot. The order is saved, and hidden tiles keep their place for when they're turned back on.
+
+### Quick Toggles
+
+The **Personalize** panel also controls which toggles appear in the home screen's Quick Toggles card. Up to three of the following can be shown at once:
+
+- **Enable cloudypilot**
+- **Remote UI**
+- **ICBM** (Intelligent Cruise Button Management)
+- **MADS** (Modular Assistive Driving System)
+- **SCC Vision** and **SCC Map** (Smart Cruise Control)
+- **Disengage on Gas**
+- **Lane Departure** (warnings)
+- **Always-On DM** (driver monitoring)
+- **Driver Camera** (record and upload)
+- **Record Audio**
+- **Metric Units**
+
+Once three are on, the rest are disabled until one is turned off. Toggles that don't apply to the car, like ICBM when cloudypilot controls longitudinal or SCC without cloudypilot longitudinal or ICBM, show as unavailable.
 
 ## Remote UI Stream
 
