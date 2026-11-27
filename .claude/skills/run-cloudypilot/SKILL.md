@@ -148,8 +148,8 @@ Bare `pytest` is not in the venv; use `tools/test_runner.py`.
   Use `tree` and tap the `ToggleAction*` center (x 675 on the Toggles panel).
 - The first ~1.5 s after `ready` is used to let fake `deviceState` reach the sidebar;
   screenshots taken earlier show `--` and offline tiles.
-- Remote UI drops a press and release that arrive in the same poll, so Playwright's
-  `mouse.click` needs `{ delay: 100 }` or the tap never registers.
+- Before #49, Remote UI dropped a press and release that arrived in the same poll, so a
+  plain Playwright `mouse.click` did nothing. The `{ delay: 100 }` above works either way.
 - In the tmux command, quote `"^drv>"`: unquoted, `>` redirects output to a file named `^drv`.
 
 ## Troubleshooting
