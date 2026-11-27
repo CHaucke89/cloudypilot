@@ -2,8 +2,7 @@
 
 # cloudypilot
 
-cloudypilot is a personal fork of [sunnypilot](https://github.com/sunnypilot/sunnypilot), itself a fork of [openpilot](https://github.com/commaai/openpilot). It is developed primarily for a 2026 Kia EV6 and is shared publicly as a free and open-source project.
-
+cloudypilot is a personal fork of [sunnypilot](https://github.com/sunnypilot/sunnypilot), itself a fork of [openpilot](https://github.com/commaai/openpilot).
 > **This is a potentially unsafe fork.** cloudypilot is not affiliated with, endorsed by, or supported by sunnypilot, comma.ai, or the openpilot developers.
 
 <img width="720" alt="cloudypilot home screen" src="docs/screenshots/home.webp" />
@@ -38,7 +37,6 @@ cloudypilot's master branch can be installed using the following URL: `installer
 - Rework the home screen into cards for the active model, software updates, device power controls, and quick toggles (more info below).
 - Customize and reorder the sidebar from the new **Personalize** settings panel (more info below).
 - Stream and interact with the device remotely with the built-in Remote UI streamer (more info below).
-- Include additional user-interface changes.
 
 ## Home screen
 
