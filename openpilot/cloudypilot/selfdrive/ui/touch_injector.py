@@ -183,7 +183,11 @@ class TouchInjector:
         # Position already updated above; keep button state as-is.
         pass
       elif msg_type in ("mouseup", "touchend", "dragend"):
-        self._release()
+        if self._down and not self._pressed_consumed:
+          # Down and up landed between two polls; hold like a click so the UI still sees the press.
+          self._down_until = now + CLICK_HOLD_S
+        else:
+          self._release()
       elif msg_type == "scroll":
         # Positive deltaY scrolls down in the browser; raylib's wheel
         # move is positive up, so invert.
